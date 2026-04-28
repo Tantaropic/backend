@@ -10,6 +10,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ model DigitalWallet {
   indexBalance    Decimal  @default(0) @db.Decimal(18, 8)
   highRiskBalance Decimal  @default(0) @db.Decimal(18, 8)
   totalValue      Decimal  @default(0) @db.Decimal(18, 8)
+  createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   profile       Profile       @relation(fields: [profileId], references: [id])
