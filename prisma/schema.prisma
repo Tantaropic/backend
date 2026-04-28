@@ -1,0 +1,12 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Tantaropic — Prisma Schema
+// Entities derived from docs/core-features.md
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
