@@ -63,3 +63,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .agents
 .vscode/
 .github/
+
+**/**/generated/*
+
+docs/
