@@ -1,0 +1,4 @@
+export enum FundType {
+  USER_DEPOSIT = 'USER_DEPOSIT',
+  ROUNDUP_DEDUCTION = 'ROUNDUP_DEDUCTION',
+}
