@@ -29,7 +29,7 @@ export class NotFoundException extends DomainException {
       id
         ? `${resource} with id "${id}" was not found`
         : `${resource} not found`,
-      ~HttpStatus.NOT_FOUND,
+      HttpStatus.NOT_FOUND,
       ErrorCode.NOT_FOUND,
     );
   }
