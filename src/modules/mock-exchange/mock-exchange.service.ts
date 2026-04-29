@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AssetClass, Currency } from '../../common/enums';
 import { CurrencyRegistry } from '../../common/constants/currency.registry';
@@ -74,7 +74,7 @@ export class MockExchangeService {
 
     const price = this.prices.get(dto.assetClass);
     if (!price) {
-      throw new Error(`Unsupported asset class: ${String(dto.assetClass)}`);
+      throw new BadRequestException(`Unsupported asset class: ${String(dto.assetClass)}`);
     }
 
     const multiplier = Number(CurrencyRegistry[dto.currency].multiplier);
@@ -118,7 +118,7 @@ export class MockExchangeService {
 
     const price = this.prices.get(dto.assetClass);
     if (!price) {
-      throw new Error(`Unsupported asset class: ${String(dto.assetClass)}`);
+      throw new BadRequestException(`Unsupported asset class: ${String(dto.assetClass)}`);
     }
 
     const totalProceeds = Number(
