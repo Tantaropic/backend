@@ -1,0 +1,15 @@
+export interface BankTransactionResponseDto {
+  success: boolean;
+  bankTransactionId: string;
+  merchantTag: string;
+  amount: number;
+  currency: string;
+  occurredAt: string;
+  webhookDelivered: boolean;
+}
+
+export interface BankOperationResponseDto {
+  success: boolean;
+  operationId: string;
+  message: string;
+}
