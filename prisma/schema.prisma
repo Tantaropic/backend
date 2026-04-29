@@ -10,7 +10,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
@@ -37,6 +36,10 @@ enum RiskProfile {
   AGGRESSIVE
 }
 
+enum Currency {
+  EGP
+}
+
 // ─── Profile ────────────────────────────────────────────────────────────────
 // A profile groups one or more users (family, friends).
 // The shared DigitalWallet belongs to the Profile, not individual users.
@@ -46,6 +49,8 @@ model Profile {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  aum       BigInt   @default(0)
 
   users  User[]
   wallet DigitalWallet?
@@ -62,8 +67,8 @@ model User {
   email       String      @unique
   name        String
   riskProfile RiskProfile @default(DEFAULT)
-  targetGoal  Decimal?    @db.Decimal(18, 8)
-  aum         Decimal     @default(0) @db.Decimal(18, 8)
+  targetGoal  BigInt?
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -82,10 +87,12 @@ model User {
 model TransactionEvent {
   id            String    @id @default(uuid())
   userId        String
+  
+  bankTransactionId String    @unique
   merchantTag   String
-  amount        Decimal   @db.Decimal(18, 8)
-  roundUpAmount Decimal   @default(0) @db.Decimal(18, 8)
-  currency      String    @default("LE")
+  amount        BigInt
+  roundUpAmount BigInt    @default(0)
+  currency      Currency    @default(EGP)
   rawPayload    Json?
   occurredAt    DateTime
   processedAt   DateTime?
@@ -104,13 +111,17 @@ model TransactionEvent {
 // Uses SELECT...FOR UPDATE during withdrawals to prevent overdraw.
 
 model DigitalWallet {
-  id              String   @id @default(uuid())
-  profileId       String   @unique
-  fiatBalance     Decimal  @default(0) @db.Decimal(18, 8)
-  goldBalance     Decimal  @default(0) @db.Decimal(18, 8)
-  indexBalance    Decimal  @default(0) @db.Decimal(18, 8)
-  highRiskBalance Decimal  @default(0) @db.Decimal(18, 8)
-  totalValue      Decimal  @default(0) @db.Decimal(18, 8)
+  id        String   @id @default(uuid())
+  profileId String   @unique
+
+  // ─── for Optimistic Concurrency Control ───
+  version   Int      @default(1)
+
+  // ─── balances ───
+  fiatBalance     BigInt   @default(0) // raw cash
+  positions         WalletPosition[]
+
+  // ─── metadata ───
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -120,7 +131,27 @@ model DigitalWallet {
   @@map("digital_wallets")
 }
 
-// ─── LedgerEntry (AccountActivity) ──────────────────────────────────────────
+// ─── WalletPosition / investments ─────────────────────────────────────────────────────────
+
+model WalletPosition {
+  id                   String        @id @default(uuid())
+  walletId             String
+  assetClass           AssetClass
+  totalUnits           BigInt        // How many grams/shares they own (smallest unit)
+  averageBuyPrice      BigInt        // avg of all buys of this asset, used to calculate if they are in profit or loss
+
+  wallet               DigitalWallet @relation(fields: [walletId], references: [id])
+
+  // ─── metadata ───
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([walletId, assetClass]) // A wallet can only have one combined position per asset
+
+  @@map("wallet_positions")
+}
+
+// ─── LedgerEntry ──────────────────────────────────────────────────────────────
 // Unified ledger. FK → User, FK → DigitalWallet.
 // Multiple entries can reference the same TransactionEvent (NOT unique).
 
@@ -129,9 +160,14 @@ model LedgerEntry {
   userId             String
   walletId           String?
   type               LedgerEntryType
-  amount             Decimal         @db.Decimal(18, 8)
-  currency           String          @default("LE")
+  amount             BigInt
+  currency           Currency          @default(EGP)
+
+  // ─── Track shares and price to sync with MockExchangeAPI ───
   assetClass         AssetClass?
+  assetUnits         BigInt?         // The number of shares/grams bought
+  executionPrice     BigInt?         // The price of the asset at the time of trade
+
   transactionEventId String?
   note               String?
   createdAt          DateTime        @default(now())
@@ -151,12 +187,12 @@ model LedgerEntry {
 // AI-generated emotional nudges. FK → User, optional FK → TransactionEvent.
 
 model AiInsight {
-  id                 String    @id @default(uuid())
+  id                 String   @id @default(uuid())
   userId             String
   transactionEventId String?
   message            String
   triggerTag         String?
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime @default(now())
 
   user             User              @relation(fields: [userId], references: [id])
   transactionEvent TransactionEvent? @relation(fields: [transactionEventId], references: [id])
