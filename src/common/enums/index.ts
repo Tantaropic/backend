@@ -4,3 +4,4 @@ export * from './asset-class.enum';
 export * from './risk-profile.enum';
 export * from './currency.enum';
 export * from './fee-type.enum';
+export * from './fund-type.enums';

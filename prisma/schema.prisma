@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Tantaropic — Prisma Schema
-// Entities derived from docs/core-features.md
+// Sharia-compliant micro-investment platform
+// Fully aligned with docs/entities.md
 // ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
@@ -9,4 +10,157 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum LedgerEntryType {
+  SWEEP
+  INBOUND_TRANSFER
+  ASSET_ALLOCATION
+  REDEMPTION
+  FUND_FEE
+  PROFIT_FEE
+}
+
+enum AssetClass {
+  FIAT
+  GOLD
+  INDEX_FUND
+  HIGH_RISK
+}
+
+enum RiskProfile {
+  DEFAULT
+  CONSERVATIVE
+  AGGRESSIVE
+}
+
+// ─── Profile ────────────────────────────────────────────────────────────────
+// A profile groups one or more users (family, friends).
+// The shared DigitalWallet belongs to the Profile, not individual users.
+
+model Profile {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users  User[]
+  wallet DigitalWallet?
+
+  @@map("profiles")
+}
+
+// ─── User ───────────────────────────────────────────────────────────────────
+// FK → Profile. Stores demographics, target goals, risk profile, and AUM.
+
+model User {
+  id          String      @id @default(uuid())
+  profileId   String
+  email       String      @unique
+  name        String
+  riskProfile RiskProfile @default(DEFAULT)
+  targetGoal  Decimal?    @db.Decimal(18, 8)
+  aum         Decimal     @default(0) @db.Decimal(18, 8)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  profile       Profile            @relation(fields: [profileId], references: [id])
+  transactions  TransactionEvent[]
+  ledgerEntries LedgerEntry[]
+  aiInsights    AiInsight[]
+
+  @@index([profileId])
+  @@map("users")
+}
+
+// ─── TransactionEvent ───────────────────────────────────────────────────────
+// Raw webhook payload from MockBankAPI. One row per purchase. FK → User.
+
+model TransactionEvent {
+  id            String    @id @default(uuid())
+  userId        String
+  merchantTag   String
+  amount        Decimal   @db.Decimal(18, 8)
+  roundUpAmount Decimal   @default(0) @db.Decimal(18, 8)
+  currency      String    @default("LE")
+  rawPayload    Json?
+  occurredAt    DateTime
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  user          User          @relation(fields: [userId], references: [id])
+  ledgerEntries LedgerEntry[]
+  aiInsights    AiInsight[]
+
+  @@index([userId])
+  @@map("transaction_events")
+}
+
+// ─── DigitalWallet ──────────────────────────────────────────────────────────
+// FK → Profile (shared wallet). Tracks current holdings per asset class.
+// Uses SELECT...FOR UPDATE during withdrawals to prevent overdraw.
+
+model DigitalWallet {
+  id              String   @id @default(uuid())
+  profileId       String   @unique
+  fiatBalance     Decimal  @default(0) @db.Decimal(18, 8)
+  goldBalance     Decimal  @default(0) @db.Decimal(18, 8)
+  indexBalance    Decimal  @default(0) @db.Decimal(18, 8)
+  highRiskBalance Decimal  @default(0) @db.Decimal(18, 8)
+  totalValue      Decimal  @default(0) @db.Decimal(18, 8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  profile       Profile       @relation(fields: [profileId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@map("digital_wallets")
+}
+
+// ─── LedgerEntry (AccountActivity) ──────────────────────────────────────────
+// Unified ledger. FK → User, FK → DigitalWallet.
+// Multiple entries can reference the same TransactionEvent (NOT unique).
+
+model LedgerEntry {
+  id                 String          @id @default(uuid())
+  userId             String
+  walletId           String?
+  type               LedgerEntryType
+  amount             Decimal         @db.Decimal(18, 8)
+  currency           String          @default("LE")
+  assetClass         AssetClass?
+  transactionEventId String?
+  note               String?
+  createdAt          DateTime        @default(now())
+
+  user             User              @relation(fields: [userId], references: [id])
+  wallet           DigitalWallet?    @relation(fields: [walletId], references: [id])
+  transactionEvent TransactionEvent? @relation(fields: [transactionEventId], references: [id])
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([type])
+  @@index([transactionEventId])
+  @@map("ledger_entries")
+}
+
+// ─── AiInsight ──────────────────────────────────────────────────────────────
+// AI-generated emotional nudges. FK → User, optional FK → TransactionEvent.
+
+model AiInsight {
+  id                 String    @id @default(uuid())
+  userId             String
+  transactionEventId String?
+  message            String
+  triggerTag         String?
+  createdAt          DateTime  @default(now())
+
+  user             User              @relation(fields: [userId], references: [id])
+  transactionEvent TransactionEvent? @relation(fields: [transactionEventId], references: [id])
+
+  @@index([userId])
+  @@map("ai_insights")
 }
