@@ -81,16 +81,16 @@ export class MockExchangeService {
     const amountInPiasters = BigInt(Math.round(dto.amount * multiplier));
     const precisionBig = BigInt(ASSET_UNIT_PRECISION);
     const priceBig = BigInt(price.pricePerUnit);
-    const units = Number(amountInPiasters * precisionBig / priceBig);
-    const totalCost = Number(BigInt(units) * priceBig / precisionBig);
+    const units = amountInPiasters * precisionBig / priceBig;
+    const totalCost = units * priceBig / precisionBig;
 
     const response: TradeResponseDto = {
       success: true,
       tradeId: randomUUID(),
       assetClass: dto.assetClass,
-      units,
+      units: Number(units),
       executionPrice: price.pricePerUnit,
-      totalAmount: totalCost,
+      totalAmount: Number(totalCost),
     };
 
     this.idempotencyStore.set(dto.idempotencyKey, response);
