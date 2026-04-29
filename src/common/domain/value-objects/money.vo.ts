@@ -48,6 +48,27 @@ export class Money {
   }
 
   /**
+   * Adds multiple Money objects together. Throws if currencies do not match.
+   */
+  public static add(...moneys: Money[]): Money {
+    if (moneys.length === 0) {
+      throw new Error('No Money objects to add');
+    }
+    const firstMoney = moneys[0];
+    for (let i = 1; i < moneys.length; i++) {
+      if (firstMoney.currency !== moneys[i].currency) {
+        throw new Error(
+          `Currency mismatch: Cannot add ${String(moneys[i].currency)} to ${String(firstMoney.currency)}`,
+        );
+      }
+    }
+    return new Money(
+      moneys.reduce((acc, money) => acc + money.amount, 0n),
+      firstMoney.currency,
+    );
+  }
+
+  /**
    * Subtracts another Money object from this one.
    * Throws if currencies do not match, or if the resulting amount would drop below zero.
    */
@@ -64,6 +85,27 @@ export class Money {
       );
     }
     return new Money(result, this.currency);
+  }
+
+  /**
+   * Subtracts multiple Money objects from this one. Throws if currencies do not match.
+   */
+  public static subtract(...moneys: Money[]): Money {
+    if (moneys.length === 0) {
+      throw new Error('No Money objects to subtract');
+    }
+    const firstMoney = moneys[0];
+    for (let i = 1; i < moneys.length; i++) {
+      if (firstMoney.currency !== moneys[i].currency) {
+        throw new Error(
+          `Currency mismatch: Cannot subtract ${String(moneys[i].currency)} from ${String(firstMoney.currency)}`,
+        );
+      }
+    }
+    return new Money(
+      moneys.reduce((acc, money) => acc - money.amount, 0n),
+      firstMoney.currency,
+    );
   }
 
   /**
