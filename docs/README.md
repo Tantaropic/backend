@@ -38,4 +38,7 @@ Sharia-compliant micro-investment platform that turns spare change from everyday
 
 ## Documentation
 
-See [docs/core-features.md](docs/core-features.md) for the full index.
+- [Developer Guidelines](DEVELOPER_GUIDELINES.md) - **Start here.** Core patterns (Oreo Cookie, OCC, BPS).
+- [Core Features Index](core-features.md) - Detailed index of all feature docs.
+- [Entities & Schema](entities.md) - Database models and relationships.
+- [Fees & Logic](fees.md) - Precision fee calculation rules.
