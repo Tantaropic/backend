@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { randomUUID } from 'crypto';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +22,10 @@ export class MockBankService {
   private readonly logger = new Logger(MockBankService.name);
   private readonly idempotencyStore = new Map<string, BankOperationResponseDto>();
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Simulates a purchase by generating a random transaction and posting it
@@ -47,7 +51,7 @@ export class MockBankService {
       occurredAt,
     };
 
-    const port = process.env.PORT ?? 5001;
+    const port = this.configService.get<number>('PORT', 5001);
 
     try {
       await firstValueFrom(
