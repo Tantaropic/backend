@@ -5,6 +5,7 @@ export interface BankTransactionResponseDto {
   amount: number;
   currency: string;
   occurredAt: string;
+  webhookDelivered: boolean;
 }
 
 export interface BankOperationResponseDto {

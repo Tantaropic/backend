@@ -53,6 +53,8 @@ export class MockBankService {
 
     const port = this.configService.get<number>('PORT', 5001);
 
+    let webhookDelivered = true;
+
     try {
       await firstValueFrom(
         this.httpService.post(
@@ -64,6 +66,7 @@ export class MockBankService {
         `Transaction simulated: ${bankTransactionId} | ${merchantTag} | ${amount} EGP`,
       );
     } catch (error) {
+      webhookDelivered = false;
       this.logger.warn(
         `Webhook delivery failed for ${bankTransactionId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
@@ -76,6 +79,7 @@ export class MockBankService {
       amount,
       currency: 'EGP',
       occurredAt,
+      webhookDelivered,
     };
   }
 
