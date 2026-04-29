@@ -10,6 +10,11 @@ export class UsersService {
       data: {
         email: `test-${Date.now()}@example.com`,
         name: 'Test User',
+        profile: {
+          create: {
+            name: 'Test Profile',
+          },
+        },
       },
     });
   }
