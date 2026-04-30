@@ -9,96 +9,176 @@ import {
 } from '../../common/interfaces/exchange-provider.interface';
 import { HttpClientService } from '../../common/http';
 import { StringifiedJSON, serialize } from '../../common/helpers/json-helper';
-import {
-  TradeRequestDto,
-  TradeResponseDto,
-  TradeType,
-} from './external-dtos/trade.dto';
-import { PriceResponseDto } from './external-dtos/price.dto';
+import { BuyAssetRequestDto } from './external-dtos/buy.dto';
+import { SellAssetRequestDto } from './external-dtos/sell.dto';
+import { TradeResponseDto } from './external-dtos/trade.dto';
+import { PriceQuoteResponseDto } from './external-dtos/price.dto';
 
 @Injectable()
 export class ExchangeIntegrationService implements IExchangeProvider {
   private readonly logger = new Logger(ExchangeIntegrationService.name);
-  private readonly baseUrl: string;
+  private readonly exchangeBaseUrl: string;
+  private readonly exchangePricesRoute: string;
+  private readonly exchangeBuyRoute: string;
+  private readonly exchangeSellRoute: string;
+  private readonly exchangeSetPricesRoute: string;
 
   constructor(
     private readonly http: HttpClientService,
     private readonly config: ConfigService,
   ) {
-    this.baseUrl = `${this.config.get<string>('BASE_URL')}/mock-exchange`;
-  }
+    const baseUrl = this.config.get<string>(
+      'BASE_URL',
+      'http://localhost:5001/api/v1',
+    );
 
-  async buyAsset(request: ITradeAssetRequest): Promise<ITradeResult> {
-    return this.executeTrade(request, TradeType.BUY);
-  }
-
-  async sellAsset(request: ITradeAssetRequest): Promise<ITradeResult> {
-    return this.executeTrade(request, TradeType.SELL);
-  }
-
-  async getLatestPrice(assetClass: AssetClass): Promise<Money> {
-    this.logger.log(`Fetching latest price for ${assetClass}`);
-
-    try {
-      const response = await this.http.get<PriceResponseDto>(
-        `${this.baseUrl}/prices/${assetClass}`,
-      );
-
-      // Map primitive back to Money VO
-      return Money.fromSmallestUnit(response.price, response.currency);
-    } catch (error) {
-      this.logger.error(`Failed to fetch price for ${assetClass}`);
-      throw error;
-    }
+    this.exchangeBaseUrl = `${baseUrl}/${this.config.get<string>(
+      'MOCK_EXCHANGE_ROUTE',
+      'mock-exchange',
+    )}`;
+    this.exchangePricesRoute = `${baseUrl}/${this.config.get<string>(
+      'MOCK_EXCHANGE_PRICES',
+      'mock-exchange/prices',
+    )}`;
+    this.exchangeBuyRoute = `${baseUrl}/${this.config.get<string>(
+      'MOCK_EXCHANGE_BUY',
+      'mock-exchange/buy',
+    )}`;
+    this.exchangeSellRoute = `${baseUrl}/${this.config.get<string>(
+      'MOCK_EXCHANGE_SELL',
+      'mock-exchange/sell',
+    )}`;
+    this.exchangeSetPricesRoute = `${baseUrl}/${this.config.get<string>(
+      'MOCK_EXCHANGE_SET_PRICES',
+      'mock-exchange/set-prices',
+    )}`;
   }
 
   /**
-   * Internal helper to handle trade execution and mapping.
+   * Executes an external BUY order.
+   * @param request {ITradeAssetRequest}
+   * @returns {ITradeResult}
    */
-  private async executeTrade(
-    request: ITradeAssetRequest,
-    type: TradeType,
-  ): Promise<ITradeResult> {
-    this.logger.log(
-      `Executing ${type} order for ${request.assetClass} | User: ${request.userId}`,
-    );
+  async buyAsset(request: ITradeAssetRequest): Promise<ITradeResult> {
+    this.logger.log(`Initiating external BUY for user ${request.userId}`);
 
-    const externalPayload: TradeRequestDto = {
-      userId: request.userId,
-      ticker: request.assetClass,
-      type: type,
-      quantity: request.units,
-      totalCost: request.totalCost.amount,
+    const externalPayload: BuyAssetRequestDto = {
+      assetClass: request.assetClass,
+      amount: request.totalCost.amount,
       currency: request.totalCost.currency,
       idempotencyKey: request.idempotencyKey,
     };
 
-    const payloadStringified = serialize<TradeRequestDto>(externalPayload);
+    const payloadStringified = serialize<BuyAssetRequestDto>(externalPayload);
 
     try {
       const response = await this.http.post<
-        StringifiedJSON<TradeRequestDto>,
+        StringifiedJSON<BuyAssetRequestDto>,
         TradeResponseDto
-      >(`${this.baseUrl}/trade`, payloadStringified);
+      >(this.exchangeBuyRoute, payloadStringified);
 
       return {
         success: response.success,
         message: response.message,
         transactionId: response.tradeId,
-        executedUnits: response.executedQuantity,
+        executedUnits: response.units,
         executionPrice:
           response.executionPrice !== undefined &&
-          response.currency !== undefined
-            ? Money.fromSmallestUnit(response.executionPrice, response.currency)
+          request.totalCost.currency !== undefined
+            ? Money.fromSmallestUnit(
+                response.executionPrice,
+                request.totalCost.currency,
+              )
             : undefined,
         totalCost:
-          response.finalTotalCost !== undefined &&
-          response.currency !== undefined
-            ? Money.fromSmallestUnit(response.finalTotalCost, response.currency)
+          response.totalAmount !== undefined &&
+          request.totalCost.currency !== undefined
+            ? Money.fromSmallestUnit(
+                response.totalAmount,
+                request.totalCost.currency,
+              )
             : undefined,
       };
     } catch (error) {
-      this.logger.error(`${type} order failed for user ${request.userId}`);
+      this.logger.error(`BUY order failed for user ${request.userId}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Executes an external SELL order.
+   * @param request {ITradeAssetRequest}
+   * @returns {ITradeResult}
+   */
+  async sellAsset(request: ITradeAssetRequest): Promise<ITradeResult> {
+    this.logger.log(`Initiating external SELL for user ${request.userId}`);
+
+    const externalPayload: SellAssetRequestDto = {
+      assetClass: request.assetClass,
+      units: request.units,
+      idempotencyKey: request.idempotencyKey,
+    };
+
+    const payloadStringified = serialize<SellAssetRequestDto>(externalPayload);
+
+    try {
+      const response = await this.http.post<
+        StringifiedJSON<SellAssetRequestDto>,
+        TradeResponseDto
+      >(this.exchangeSellRoute, payloadStringified);
+
+      return {
+        success: response.success,
+        message: response.message,
+        transactionId: response.tradeId,
+        executedUnits: response.units,
+        executionPrice:
+          response.executionPrice !== undefined &&
+          request.totalCost.currency !== undefined
+            ? Money.fromSmallestUnit(
+                response.executionPrice,
+                request.totalCost.currency,
+              )
+            : undefined,
+        totalCost:
+          response.totalAmount !== undefined &&
+          request.totalCost.currency !== undefined
+            ? Money.fromSmallestUnit(
+                response.totalAmount,
+                request.totalCost.currency,
+              )
+            : undefined,
+      };
+    } catch (error) {
+      this.logger.error(`SELL order failed for user ${request.userId}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the latest price for a given asset class.
+   * @param assetClass {AssetClass}
+   * @returns {Promise<Money>}
+   */
+  async getLatestPrice(assetClass: AssetClass): Promise<Money> {
+    this.logger.log(`Fetching latest price for ${assetClass}`);
+
+    try {
+      const response = await this.http.get<PriceQuoteResponseDto>(
+        `${this.exchangePricesRoute}?assetClass=${assetClass}`,
+      );
+
+      const priceData = response.prices.find(
+        (p) => p.assetClass === assetClass,
+      );
+      if (!priceData) {
+        throw new Error(`Price not found for ${assetClass}`);
+      }
+
+      // Map primitive back to Money VO
+      return Money.fromSmallestUnit(priceData.pricePerUnit, priceData.currency);
+    } catch (error) {
+      this.logger.error(`Failed to fetch price for ${assetClass}`);
       throw error;
     }
   }

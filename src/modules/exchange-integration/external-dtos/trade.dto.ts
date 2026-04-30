@@ -1,63 +1,12 @@
 import {
   IsNotEmpty,
-  IsString,
   IsEnum,
+  IsString,
   IsBoolean,
   IsOptional,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { AssetClass, Currency } from '../../../common/enums';
-
-export enum TradeType {
-  BUY = 'BUY',
-  SELL = 'SELL',
-}
-
-export class TradeRequestDto {
-  @IsNotEmpty()
-  @IsString()
-  userId: string;
-
-  @IsNotEmpty()
-  @IsEnum(AssetClass)
-  ticker: AssetClass;
-
-  @IsNotEmpty()
-  @IsEnum(TradeType)
-  type: TradeType;
-
-  @IsNotEmpty()
-  @Transform(({ value }) => {
-    try {
-      return BigInt(String(value));
-    } catch {
-      throw new Error(
-        `Invalid quantity ${value} - Failed to convert to BigInt`,
-      );
-    }
-  })
-  quantity: bigint;
-
-  @IsNotEmpty()
-  @Transform(({ value }) => {
-    try {
-      return BigInt(String(value));
-    } catch {
-      throw new Error(
-        `Invalid totalCost ${value} - Failed to convert to BigInt`,
-      );
-    }
-  })
-  totalCost: bigint;
-
-  @IsNotEmpty()
-  @IsEnum(Currency)
-  currency: Currency;
-
-  @IsNotEmpty()
-  @IsString()
-  idempotencyKey: string;
-}
+import { AssetClass } from '../../../common/enums';
 
 export class TradeResponseDto {
   @IsBoolean()
@@ -67,42 +16,45 @@ export class TradeResponseDto {
   @IsString()
   message?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  tradeId?: string;
+  tradeId: string;
+
+  @IsNotEmpty()
+  @IsEnum(AssetClass)
+  assetClass: AssetClass;
 
   @IsNotEmpty()
   @Transform(({ value }) => {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new Error(`Invalid units ${value} - Failed to convert to BigInt`);
     }
   })
-  executedQuantity?: bigint;
+  units: bigint;
 
   @IsNotEmpty()
   @Transform(({ value }) => {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new Error(
+        `Invalid executionPrice ${value} - Failed to convert to BigInt`,
+      );
     }
   })
-  amount: bigint;
-  executionPrice?: bigint;
+  executionPrice: bigint;
 
   @IsNotEmpty()
   @Transform(({ value }) => {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new Error(
+        `Invalid totalAmount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
-  finalTotalCost?: bigint;
-
-  @IsOptional()
-  @IsEnum(Currency)
-  currency?: Currency;
+  totalAmount: bigint;
 }
