@@ -55,9 +55,7 @@ export class MockExchangeController {
    * @param body - Asset class and new price in smallest currency unit.
    */
   @Post('set-prices')
-  setPrices(
-    @Body() body: { assetClass: AssetClass; pricePerUnit: number },
-  ): { success: boolean } {
+  setPrices(@Body() body: { assetClass: AssetClass; pricePerUnit: bigint }) {
     this.exchangeService.setPrice(body.assetClass, body.pricePerUnit);
     return { success: true };
   }

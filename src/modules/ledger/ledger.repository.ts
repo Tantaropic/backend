@@ -22,7 +22,7 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
    * This method "unwraps" the Money VO into amount (BigInt) and currency (string) for Prisma persistence.
    */
   async saveEntry(data: LedgerEntryDto, money: Money): Promise<LedgerEntry> {
-    const { amount, currency } = money.toDatabaseValue();
+    const { amount, currency } = money;
 
     return await this.db.create({
       data: {

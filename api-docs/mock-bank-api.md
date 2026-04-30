@@ -12,11 +12,12 @@ Simulates a user making a purchase at a merchant. Generates a random transaction
 
 ### Request Body
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `userId` | `string` | Yes | The user who made the purchase |
-| `amount` | `number` | No | Purchase amount in EGP (major units). If omitted, a random amount between 1–500 EGP is generated |
-| `merchantTag` | `string` | No | Merchant category. If omitted, a random tag is picked from the curated list |
+| Field         | Type     | Required | Description                                                                                      |
+| ------------- | -------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `userId`      | `string` | Yes      | The user who made the purchase                                                                   |
+| `amount`      | `number` | No       | Purchase amount in EGP (major units). If omitted, a random amount between 1–500 EGP is generated |
+| `merchantTag` | `string` | No       | Merchant category. If omitted, a random tag is picked from the curated list                      |
+| `webhookDelivered` | `boolean` | No | Overrides actual webhook delivery tracking. Allows simulating offline/failure scenarios |
 
 ### Available Merchant Tags
 
@@ -41,9 +42,10 @@ POST /mock-bank/simulate-transaction
 ```json
 {
   "success": true,
-  "bankTransactionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "webhookDelivered": true,
+  "transactionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "merchantTag": "coffee_shop",
-  "amount": 4.30,
+  "amount": 4.3,
   "currency": "EGP",
   "occurredAt": "2026-04-29T14:30:00.000Z"
 }
@@ -51,11 +53,11 @@ POST /mock-bank/simulate-transaction
 
 ### Behavior
 
-1. Generates a unique `bankTransactionId` (UUID)
+1. Generates a unique `transactionId` (UUID)
 2. Builds a webhook payload with transaction details
-3. Makes an HTTP POST to `http://localhost:{PORT}/webhook/transaction`
-4. Returns the generated transaction details regardless of webhook delivery status
-5. If the webhook endpoint is not yet available, a warning is logged but the response still succeeds
+3. Makes an HTTP POST to `http://localhost:{PORT}/api/v1/bank-integrations/transaction-webhook`
+4. Returns the generated transaction details and a `webhookDelivered` status.
+5. If the webhook endpoint is not yet available, a warning is logged but the response still succeeds, returning `webhookDelivered: false`.
 
 ### Notes
 
@@ -71,13 +73,13 @@ Simulates collecting round-up funds from the user's bank account. Called by the 
 
 ### Request Body
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `bankTransactionId` | `string` | Yes | Reference to the original transaction |
-| `userId` | `string` | Yes | The user whose funds are being collected |
-| `amount` | `number` | Yes | Amount to collect in major units |
-| `currency` | `string` | Yes | Currency code (e.g. `"EGP"`) |
-| `idempotencyKey` | `string` | Yes | Unique key to prevent duplicate collections |
+| Field            | Type     | Required | Description                                 |
+| ---------------- | -------- | -------- | ------------------------------------------- |
+| `transactionId`  | `string` | Yes      | Reference to the original transaction       |
+| `userId`         | `string` | Yes      | The user whose funds are being collected    |
+| `amount`         | `number` | Yes      | Amount to collect in major units            |
+| `currency`       | `string` | Yes      | Currency code (e.g. `"EGP"`)                |
+| `idempotencyKey` | `string` | Yes      | Unique key to prevent duplicate collections |
 
 ### Example Request
 
@@ -85,7 +87,7 @@ Simulates collecting round-up funds from the user's bank account. Called by the 
 POST /mock-bank/collect-funds
 
 {
-  "bankTransactionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "transactionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "amount": 0.70,
   "currency": "EGP",
@@ -115,12 +117,12 @@ Simulates depositing money back to the user's bank account during a withdrawal (
 
 ### Request Body
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `userId` | `string` | Yes | The user receiving the deposit |
-| `amount` | `number` | Yes | Amount to deposit in major units |
-| `currency` | `string` | Yes | Currency code (e.g. `"EGP"`) |
-| `idempotencyKey` | `string` | Yes | Unique key to prevent duplicate deposits |
+| Field            | Type     | Required | Description                              |
+| ---------------- | -------- | -------- | ---------------------------------------- |
+| `userId`         | `string` | Yes      | The user receiving the deposit           |
+| `amount`         | `number` | Yes      | Amount to deposit in major units         |
+| `currency`       | `string` | Yes      | Currency code (e.g. `"EGP"`)             |
+| `idempotencyKey` | `string` | Yes      | Unique key to prevent duplicate deposits |
 
 ### Example Request
 
