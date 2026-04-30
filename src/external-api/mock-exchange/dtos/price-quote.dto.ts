@@ -2,11 +2,17 @@ import { AssetClass, Currency } from '../../../common/enums';
 
 export interface AssetPriceDto {
   assetClass: AssetClass;
-  pricePerUnit: number;
+  pricePerUnit: bigint;
   currency: Currency;
   updatedAt: string;
 }
 
 export interface PriceQuoteResponseDto {
   prices: AssetPriceDto[];
+}
+
+export interface PriceEntry {
+  currPrice: bigint;
+  updatedAt: Date;
+  currency: Currency;
 }

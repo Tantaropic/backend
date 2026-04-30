@@ -4,7 +4,7 @@ export interface TradeResponseDto {
   success: boolean;
   tradeId: string;
   assetClass: AssetClass;
-  units: number;
-  executionPrice: number;
-  totalAmount: number;
+  units: bigint;
+  executionPrice: bigint;
+  totalAmount: bigint;
 }

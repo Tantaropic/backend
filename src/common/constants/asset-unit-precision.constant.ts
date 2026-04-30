@@ -6,4 +6,4 @@
  * Mirrors the precision of the original Decimal(18, 8) schema.
  * Example: 0.00155555 grams of gold = 155_555 internal units.
  */
-export const ASSET_UNIT_PRECISION = 100_000_000; // 1e8
+export const ASSET_UNIT_PRECISION: bigint = 100_000_000n; // 1e8
