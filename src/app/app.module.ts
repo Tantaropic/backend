@@ -3,8 +3,10 @@ import { AppController } from './app.controller';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../database/prisma/prisma.module';
 import { UsersModule } from '../modules/users/users.module';
-import { MockBankModule } from '../modules/mock-bank/mock-bank.module';
-import { MockExchangeModule } from '../modules/mock-exchange/mock-exchange.module';
+import { MockBankModule } from '../external-api/mock-bank/mock-bank.module';
+import { ExchangeIntegrationModule } from '../modules/exchange-integration/exchange-integration.module';
+import { MockExchangeModule } from '../external-api/mock-exchange/mock-exchange.module';
+import { HttpModule } from '../common/http/http.module';
 
 @Module({
   imports: [
@@ -12,7 +14,9 @@ import { MockExchangeModule } from '../modules/mock-exchange/mock-exchange.modul
     PrismaModule,
     UsersModule,
     MockBankModule,
+    ExchangeIntegrationModule,
     MockExchangeModule,
+    HttpModule,
   ],
   controllers: [AppController],
   providers: [],
