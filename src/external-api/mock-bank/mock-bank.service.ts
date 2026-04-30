@@ -4,7 +4,6 @@ import { HttpService } from '@nestjs/axios';
 import { randomUUID } from 'crypto';
 import { Currency } from '@prisma/client';
 import { HttpClientService } from '../../common/http';
-import { SYSTEM_API_URLS } from '../../common/constants';
 import {
   MERCHANT_TAGS,
   type MerchantTag,
@@ -25,6 +24,8 @@ import {
  */
 @Injectable()
 export class MockBankService {
+  private readonly baseUrl: string;
+  private readonly transactionWebhookUrl: string;
   private readonly logger = new Logger(MockBankService.name);
   // For simplicity, using an in-memory map. In production, use Redis or a database.
   // This map stores the response for each idempotency key.
@@ -41,7 +42,16 @@ export class MockBankService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly httpClientService: HttpClientService,
-  ) {}
+  ) {
+    const baseUrl = this.configService.get<string>(
+      'BASE_URL',
+      'http://localhost:5001/api/v1',
+    );
+    this.transactionWebhookUrl = `${baseUrl}/${this.configService.get<string>(
+      'SYSTEM_TRANSACTION_WEBHOOK_ROUTE',
+      'bank-integrations/transaction-webhook',
+    )}`;
+  }
 
   /**
    * Simulates a purchase by generating a random transaction and posting it
@@ -67,7 +77,8 @@ export class MockBankService {
     );
 
     return {
-      success: webhookDelivered,
+      success: true,
+      webhookDelivered,
       ...transactionWebhookPayload,
     };
   }
@@ -78,10 +89,7 @@ export class MockBankService {
    * @param dto - Collection request with amount and idempotency key.
    * @returns {IFundTransferResult}
    */
-  debit(
-    accountId: string,
-    debitDto: FundTransferRequestDto,
-  ): FundTransferResponseDto {
+  debit(debitDto: FundTransferRequestDto): FundTransferResponseDto {
     const existing = this.getDebitIdempotencyKey(debitDto.idempotencyKey);
     if (existing) {
       this.logger.log(`Idempotent hit for collect: ${debitDto.idempotencyKey}`);
@@ -111,10 +119,7 @@ export class MockBankService {
    * @param dto - Deposit request with amount and idempotency key.
    * @returns {}
    */
-  deposit(
-    accountId: string,
-    depositDto: FundTransferRequestDto,
-  ): FundTransferResponseDto {
+  deposit(depositDto: FundTransferRequestDto): FundTransferResponseDto {
     const existing = this.getDepositIdempotencyKey(depositDto.idempotencyKey);
     if (existing) {
       this.logger.log(
@@ -148,10 +153,10 @@ export class MockBankService {
   ): SimulateTransactionRequestDto {
     return {
       userId: dto.userId ?? randomUUID(),
-      amount: BigInt(dto.amount ?? this.randomAmount()),
+      amount: dto.amount ? BigInt(dto.amount) : BigInt(this.randomAmount()),
       currency: dto.currency ?? Currency.EGP,
       merchantTag: dto.merchantTag ?? this.randomMerchanTag(),
-      idempotencyKey: randomUUID(),
+      idempotencyKey: dto.idempotencyKey ?? randomUUID(),
     };
   }
 
@@ -167,10 +172,7 @@ export class MockBankService {
       await this.httpClientService.post<
         TransactionWebhookRequestDto,
         TransactionWebhookResponseDto
-      >(
-        `${SYSTEM_API_URLS.TRANSACTION_WEBHOOK_URL.replace('{{transactionId}}', payload.transactionId)}`,
-        payload,
-      );
+      >(this.transactionWebhookUrl, payload);
       this.logger.log(
         `Transaction webhook sent: ${payload.transactionId} | ${payload.merchantTag} | ${payload.amount} ${payload.currency}`,
       );

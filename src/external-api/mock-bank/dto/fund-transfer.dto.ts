@@ -35,6 +35,8 @@ export class FundTransferRequestDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  accountId?: string;
 }
 
 export class FundTransferResponseDto {

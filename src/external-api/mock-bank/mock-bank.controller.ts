@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { MockBankService } from './mock-bank.service';
 import {
   FundTransferRequestDto,
@@ -10,7 +10,10 @@ import { JsonHelper } from '../../common/helpers';
 
 @Controller('mock-bank')
 export class MockBankController {
-  constructor(private readonly bankService: MockBankService) {}
+  private readonly bankService: MockBankService;
+  constructor(bankService: MockBankService) {
+    this.bankService = bankService;
+  }
 
   /**
    * Simulates a user making a purchase at a merchant.
@@ -32,12 +35,9 @@ export class MockBankController {
    * @param dto - Collection details with amount and idempotency key.
    * @returns Operation confirmation.
    */
-  @Post('accounts/{accountId}/debits')
-  debit(
-    @Body() dto: FundTransferRequestDto,
-    @Param('accountId') accountId: string,
-  ) {
-    const response = this.bankService.debit(accountId, dto);
+  @Post('debits')
+  debit(@Body() dto: FundTransferRequestDto) {
+    const response = this.bankService.debit(dto);
     return JsonHelper.serialize<FundTransferResponseDto>(response);
   }
 
@@ -46,12 +46,9 @@ export class MockBankController {
    * @param dto - Deposit details with amount and idempotency key.
    * @returns Operation confirmation.
    */
-  @Post('accounts/{accountId}/deposits')
-  deposit(
-    @Body() dto: FundTransferRequestDto,
-    @Param('accountId') accountId: string,
-  ) {
-    const response = this.bankService.deposit(accountId, dto);
+  @Post('deposits')
+  deposit(@Body() dto: FundTransferRequestDto) {
+    const response = this.bankService.deposit(dto);
     return JsonHelper.serialize<FundTransferResponseDto>(response);
   }
 }

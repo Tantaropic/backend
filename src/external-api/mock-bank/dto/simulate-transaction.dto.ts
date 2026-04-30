@@ -53,4 +53,8 @@ export class SimulateTransactionResponseDto {
   @IsOptional()
   @IsEnum(Currency)
   currency?: Currency;
+
+  @IsOptional()
+  @IsBoolean()
+  webhookDelivered?: boolean;
 }
