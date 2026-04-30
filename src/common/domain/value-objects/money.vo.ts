@@ -109,9 +109,9 @@ export class Money {
   }
 
   /**
-   * Unwraps the Money object into flat primitives for database persistence.
+   * Unwraps the Money object into flat primitives for external API calls, DTOs, or database persistence.
    */
-  public toDatabaseValue(): { amount: bigint; currency: Currency } {
+  public toPrimitives(): { amount: bigint; currency: Currency } {
     return {
       amount: this.amount,
       currency: this.currency,
