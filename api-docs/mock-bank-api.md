@@ -17,6 +17,7 @@ Simulates a user making a purchase at a merchant. Generates a random transaction
 | `userId`      | `string` | Yes      | The user who made the purchase                                                                   |
 | `amount`      | `number` | No       | Purchase amount in EGP (major units). If omitted, a random amount between 1–500 EGP is generated |
 | `merchantTag` | `string` | No       | Merchant category. If omitted, a random tag is picked from the curated list                      |
+| `webhookDelivered` | `boolean` | No | Overrides actual webhook delivery tracking. Allows simulating offline/failure scenarios |
 
 ### Available Merchant Tags
 
@@ -41,6 +42,7 @@ POST /mock-bank/simulate-transaction
 ```json
 {
   "success": true,
+  "webhookDelivered": true,
   "transactionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "merchantTag": "coffee_shop",
   "amount": 4.3,
@@ -53,9 +55,9 @@ POST /mock-bank/simulate-transaction
 
 1. Generates a unique `transactionId` (UUID)
 2. Builds a webhook payload with transaction details
-3. Makes an HTTP POST to `http://localhost:{PORT}/webhook/transaction`
-4. Returns the generated transaction details regardless of webhook delivery status
-5. If the webhook endpoint is not yet available, a warning is logged but the response still succeeds
+3. Makes an HTTP POST to `http://localhost:{PORT}/api/v1/bank-integrations/transaction-webhook`
+4. Returns the generated transaction details and a `webhookDelivered` status.
+5. If the webhook endpoint is not yet available, a warning is logged but the response still succeeds, returning `webhookDelivered: false`.
 
 ### Notes
 
