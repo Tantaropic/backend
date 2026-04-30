@@ -17,8 +17,11 @@ import {
   DepositResponseDto,
   SimulateTransactionRequestDto,
   SimulateTransactionResponseDto,
+  type TransactionWebhookRequestDto,
+  type TransactionWebhookResponseDto,
 } from './external-dtos';
-
+import { EventType, EventsPayloads } from '../../common/events';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 /**
  * Adapter implementation for the Bank Provider port.
  * Translates our internal domain types into external-facing DTOs for the Mock Bank API.
@@ -27,16 +30,32 @@ import {
 @Injectable()
 export class BankIntegrationService implements IBankProvider {
   private readonly logger = new Logger(BankIntegrationService.name);
-  private readonly baseUrl: string;
+  private readonly bankSimulateTransactionUrl: string;
+  private readonly bankDebitUrl: string;
+  private readonly bankDepositUrl: string;
 
   constructor(
     private readonly http: HttpClientService,
     private readonly config: ConfigService,
+    private readonly eventService: EventEmitter2,
   ) {
-    // Construct base URL for external mock bank.
-    const host = this.config.get<string>('HOST');
-    const port = this.config.get<number>('PORT');
-    this.baseUrl = `${host}:${port}`;
+    const baseUrl = this.config.get<string>(
+      'BASE_URL',
+      'http://localhost:5001/api/v1',
+    );
+
+    this.bankSimulateTransactionUrl = `${baseUrl}/${this.config.get<string>(
+      'MOCK_BANK_SIMULATE_TRANSACTION',
+      'mock-bank/simulate-transaction',
+    )}`;
+    this.bankDebitUrl = `${baseUrl}/${this.config.get<string>(
+      'MOCK_BANK_DEBIT_ROUTE',
+      'mock-bank/debits',
+    )}`;
+    this.bankDepositUrl = `${baseUrl}/${this.config.get<string>(
+      'MOCK_BANK_DEPOSIT_ROUTE',
+      'mock-bank/deposits',
+    )}`;
   }
 
   async simulateTransaction(
@@ -60,7 +79,7 @@ export class BankIntegrationService implements IBankProvider {
       const response = await this.http.post<
         StringifiedJSON<SimulateTransactionRequestDto>,
         SimulateTransactionResponseDto
-      >(`${this.baseUrl}/mock-bank/simulate-transaction`, payloadStringified);
+      >(this.bankSimulateTransactionUrl, payloadStringified);
 
       // Map External Result back to Domain Result
       return this.mapResponse(response);
@@ -70,6 +89,30 @@ export class BankIntegrationService implements IBankProvider {
       );
       throw error;
     }
+  }
+
+  handleTransactionWebhook(
+    payload: TransactionWebhookRequestDto,
+  ): TransactionWebhookResponseDto {
+    this.logger.log(`Handling transaction webhook for user ${payload.userId}`);
+
+    const eventPayload: EventsPayloads.TransactionWebhookReceivedEventPayload =
+      {
+        timestamp: new Date(),
+        userId: payload.userId,
+        transactionId: payload.transactionId,
+        money: Money.fromSmallestUnit(payload.amount, payload.currency),
+      };
+
+    this.eventService.emit(
+      EventType.SystemEventType.BANK_TRANSACTION_WEBHOOK_RECEIVED,
+      eventPayload,
+    );
+
+    return {
+      success: true,
+      transactionId: eventPayload.transactionId,
+    };
   }
 
   /**
@@ -92,10 +135,7 @@ export class BankIntegrationService implements IBankProvider {
       const response = await this.http.post<
         StringifiedJSON<DebitRequestDto>,
         DebitResponseDto
-      >(
-        `${this.baseUrl}/accounts/${payload.userId}/debits`,
-        payloadStringified,
-      );
+      >(this.bankDebitUrl, payloadStringified);
 
       // Map External Result back to Domain Result
       return this.mapResponse(response);
@@ -125,10 +165,7 @@ export class BankIntegrationService implements IBankProvider {
       const response = await this.http.post<
         StringifiedJSON<DepositRequestDto>,
         DepositResponseDto
-      >(
-        `${this.baseUrl}/accounts/${payload.userId}/deposits`,
-        payloadStringified,
-      );
+      >(this.bankDepositUrl, payloadStringified);
 
       // Map External Result back to Domain Result
       return this.mapResponse(response);
