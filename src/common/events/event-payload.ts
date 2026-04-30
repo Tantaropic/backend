@@ -16,6 +16,7 @@ type WalletEventPayload = {
 
 export type WalletDepositEventPayload = WalletEventPayload;
 export type WalletWithdrawalEventPayload = WalletEventPayload;
+export type WalletBalanceReconciledEventPayload = WalletEventPayload;
 
 // Bank events payload.
 export type TransactionWebhookReceivedEventPayload = {
@@ -37,3 +38,10 @@ export type AssetPriceChangedEventPayload = {
   asset: AssetClass;
   assetPrice: Money;
 } & BaseEventPayload;
+
+// AI events payload.
+export type AiInsightGeneratedEventPayload = {
+  userId: string;
+  insightId: string;
+  message: string;
+};

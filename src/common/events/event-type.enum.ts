@@ -11,4 +11,7 @@ export enum SystemEventType {
 
   // Bank Domain
   BANK_TRANSACTION_WEBHOOK_RECEIVED = 'bank.transaction_webhook_received',
+
+  // AI Domain
+  AI_INSIGHT_GENERATED = 'ai.insight_generated',
 }
