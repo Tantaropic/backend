@@ -32,6 +32,8 @@ export const I_BANK_PROVIDER = Symbol('I_BANK_PROVIDER');
  */
 export interface IFundTransferRequest {
   userId: string;
+  accountId?: string;
+  transactionId?: string;
   money: Money;
   idempotencyKey: string;
   metadata?: Record<string, any>;
