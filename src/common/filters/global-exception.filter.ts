@@ -136,7 +136,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     const isValidation = Array.isArray(nestBody.message);
-    const errorCode = this.httpStatusToErrorCode(status, isValidation);
+
+    // Prioritize the errorCode if it's already defined in the exception body (e.g. from DomainException)
+    // Otherwise fallback to mapping the HTTP status
+    const errorCode =
+      typeof nestBody.error === 'string' &&
+      Object.values(ErrorCode).includes(nestBody.error as ErrorCode)
+        ? nestBody.error
+        : this.httpStatusToErrorCode(status, isValidation);
+
     const message = isValidation
       ? 'Validation failed'
       : typeof nestBody.message === 'string'
@@ -229,7 +237,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       [HttpStatus.UNPROCESSABLE_ENTITY]: ErrorCode.UNPROCESSABLE_ENTITY,
       [HttpStatus.TOO_MANY_REQUESTS]: ErrorCode.TOO_MANY_REQUESTS,
       [HttpStatus.INTERNAL_SERVER_ERROR]: ErrorCode.INTERNAL_SERVER_ERROR,
-      [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCode.SERVICE_UNAVAILABLE,
+      [HttpStatus.BAD_GATEWAY]: ErrorCode.BANK_INTEGRATION_FAILED,
+      [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCode.EXCHANGE_API_UNAVAILABLE,
+      [HttpStatus.GATEWAY_TIMEOUT]: ErrorCode.EXTERNAL_API_TIMEOUT,
     };
 
     return map[status] ?? ErrorCode.INTERNAL_SERVER_ERROR;

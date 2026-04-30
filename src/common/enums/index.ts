@@ -1,4 +1,5 @@
 export * from './error-code.enum';
+export * from './operation-status.enum';
 export {
   LedgerEntryType,
   AssetClass,

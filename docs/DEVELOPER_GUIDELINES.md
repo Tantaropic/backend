@@ -51,3 +51,13 @@ All API responses must follow the project's standard envelope:
 - `src/modules`: Feature-specific modules (e.g., `ledger`, `wallet`).
 - `src/common`: Shared infrastructure, including `domain` (VOs), `repositories` (Base), and `constants`.
 - `src/database`: Prisma integration and configuration.
+
+## 7. Global API Routing
+
+All internal and integration endpoints must sit behind the global `api/v1` prefix. This is configured in `src/main.ts` using `app.setGlobalPrefix('api/v1')`.
+
+## 8. Event-Driven Architecture
+
+The platform uses `@nestjs/event-emitter` to decouple modules. 
+Events and their payload structures are strictly typed in `src/common/events`.
+When cross-domain reactions are required (e.g. `BankIntegrationService` receiving a webhook that must trigger the `Ledger`), the initiating service emits a strongly-typed event (`EventType.SystemEventType.BANK_TRANSACTION_WEBHOOK_RECEIVED`) rather than injecting the target service directly.
