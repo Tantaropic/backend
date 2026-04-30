@@ -18,6 +18,8 @@ async function bootstrap() {
     }),
   );
 
+  app.setGlobalPrefix('api/v1');
+
   // ─── Global Exception Filter ───
   app.useGlobalFilters(new GlobalExceptionFilter());
 
