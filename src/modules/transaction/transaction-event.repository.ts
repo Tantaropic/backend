@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { TransactionEvent, Currency } from '@prisma/client';
+import { Currency } from '../../common/enums';
+import { TransactionEvent } from '@prisma/client';
 import { BaseRepository } from '../../common/repositories/base.repository';
 import { PrismaService } from '../../database/prisma/prisma.service';
 

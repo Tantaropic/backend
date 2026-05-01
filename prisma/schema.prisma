@@ -72,6 +72,7 @@ model User {
   name        String
   riskProfile RiskProfile @default(DEFAULT)
   targetGoal  BigInt?
+  roundUpStep BigInt      @default(10)
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

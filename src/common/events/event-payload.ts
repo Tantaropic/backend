@@ -47,4 +47,3 @@ export type AssetPriceChangedEventPayload = {
   asset: AssetClass;
   assetPrice: Money;
 } & BaseEventPayload;
-

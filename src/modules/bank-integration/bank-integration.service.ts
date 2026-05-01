@@ -110,7 +110,7 @@ export class BankIntegrationService implements IBankProvider {
     }
 
     // Convert to domain Money VO at the ACL boundary
-    const money = Money.fromSmallestUnit(payload.amount, payload.currency);
+    const money = Money.fromMinorUnit(payload.amount, payload.currency);
 
     // Persist the raw transaction event before emitting
     const txEvent = await this.transactionEventRepo.saveFromWebhook({
@@ -219,7 +219,7 @@ export class BankIntegrationService implements IBankProvider {
       userId: external.userId,
       money:
         external.amount !== undefined && external.currency !== undefined
-          ? Money.fromSmallestUnit(external.amount, external.currency)
+          ? Money.fromMinorUnit(external.amount, external.currency)
           : undefined,
     };
   }

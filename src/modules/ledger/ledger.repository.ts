@@ -35,7 +35,7 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
 
   /**
    * Calculates the balance for a given user.
-   * This method "wraps" the raw database rows back into safe Money VO instances using fromSmallestUnit.
+   * This method "wraps" the raw database rows back into safe Money VO instances using fromMinorUnit.
    * All financial math happens inside the Money VO, never using raw numbers in the repository.
    */
   async getBalance(userId: string): Promise<Money> {
@@ -47,7 +47,7 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
     return entries.reduce(
       (total, entry) => {
         // WRAP the raw DB row into the Money VO
-        const entryMoney = Money.fromSmallestUnit(entry.amount, entry.currency);
+        const entryMoney = Money.fromMinorUnit(entry.amount, entry.currency);
 
         // Determine if the entry is a credit (addition) or debit (subtraction)
         // Credit-side entries increase the balance; everything else is a debit.
@@ -60,7 +60,7 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
 
         return isCredit ? total.add(entryMoney) : total.subtract(entryMoney);
       },
-      Money.fromSmallestUnit(0n, 'EGP'),
+      Money.fromMinorUnit(0n, 'EGP'),
     );
   }
 }
