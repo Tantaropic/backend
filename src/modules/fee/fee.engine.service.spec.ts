@@ -215,3 +215,295 @@ describe('FeeEngineService - onRoundupDebited (FUND_FEE)', () => {
     );
   });
 });
+
+// ─── Phase 3: WITHDRAWAL_REQUESTED → PROFIT_FEE ──────────────────────────────
+
+import { AssetClass } from '../../common/enums';
+
+type WithdrawalTxMock = {
+  walletPosition: { updateMany: jest.Mock };
+  profile: { updateMany: jest.Mock };
+  ledgerEntry: { create: jest.Mock };
+};
+
+const buildWithdrawalPrismaMock = (overrides?: {
+  positionUpdateCount?: number;
+  profileUpdateCount?: number;
+  ledgerCreateError?: unknown;
+  positions?: Array<{
+    id: string;
+    assetClass: AssetClass;
+    totalUnits: bigint;
+    averageBuyPrice: bigint;
+    version: number;
+  }>;
+}) => {
+  const tx: WithdrawalTxMock = {
+    walletPosition: {
+      updateMany: jest
+        .fn()
+        .mockResolvedValue({ count: overrides?.positionUpdateCount ?? 1 }),
+    },
+    profile: {
+      updateMany: jest
+        .fn()
+        .mockResolvedValue({ count: overrides?.profileUpdateCount ?? 1 }),
+    },
+    ledgerEntry: {
+      create: overrides?.ledgerCreateError
+        ? jest.fn().mockRejectedValue(overrides.ledgerCreateError)
+        : jest.fn().mockResolvedValue({ id: 'ledger-pf' }),
+    },
+  };
+
+  const positions = overrides?.positions ?? [
+    {
+      id: 'pos-gold',
+      assetClass: AssetClass.GOLD,
+      totalUnits: 100n,
+      averageBuyPrice: 150n,
+      version: 2,
+    },
+    {
+      id: 'pos-index',
+      assetClass: AssetClass.INDEX_FUND,
+      totalUnits: 100n,
+      averageBuyPrice: 100n,
+      version: 5,
+    },
+  ];
+
+  const prisma = {
+    digitalWallet: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        id: 'wallet-1',
+        profileId: 'profile-1',
+        version: 7,
+        profile: { id: 'profile-1', aum: 50_000n, version: 9 },
+      }),
+    },
+    walletPosition: {
+      findMany: jest.fn().mockResolvedValue(positions),
+    },
+    $transaction: jest.fn(
+      async (cb: (tx: WithdrawalTxMock) => Promise<unknown>) => await cb(tx),
+    ),
+  };
+
+  return { prisma, tx, positions };
+};
+
+const buildWithdrawalPayload = (
+  o: Partial<EventsPayloads.WithdrawalRequestedEventPayload> = {},
+): EventsPayloads.WithdrawalRequestedEventPayload => ({
+  userId: 'user-1',
+  walletId: 'wallet-1',
+  withdrawalRequestId: 'wd-1',
+  transactionId: 'tx-wd-1',
+  idempotencyKey: 'wd-key-1',
+  sales: [
+    {
+      assetClass: AssetClass.GOLD,
+      units: 10n,
+      executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+    },
+    {
+      assetClass: AssetClass.INDEX_FUND,
+      units: 20n,
+      executionPrice: Money.fromSmallestUnit(120n, Currency.EGP),
+    },
+  ],
+  ...o,
+});
+
+describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
+  let calculator: FeeCalculatorService;
+  let events: { emit: jest.Mock };
+
+  beforeEach(() => {
+    calculator = new FeeCalculatorService();
+    events = { emit: jest.fn() };
+  });
+
+  it('aggregates per-asset profit, posts PROFIT_FEE row, decrements positions/AUM, emits next event', async () => {
+    // Sale math:
+    //   GOLD:  10 units * 200 = 2000 proceeds; cost 10*150 = 1500; profit 500
+    //   INDEX: 20 units * 120 = 2400 proceeds; cost 20*100 = 2000; profit 400
+    //   Totals: proceeds=4400, cost=3500, profit=900
+    //   Profit fee bracket(900 piasters) = 150 bps → fee = 900 * 150 / 10_000 = 13
+    //   netToUser = 4400 - 13 = 4387
+    const { prisma, tx } = buildWithdrawalPrismaMock();
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await service.onWithdrawalRequested(buildWithdrawalPayload());
+
+    // Both positions decremented under OCC.
+    expect(tx.walletPosition.updateMany).toHaveBeenCalledWith({
+      where: { id: 'pos-gold', version: 2 },
+      data: { totalUnits: { decrement: 10n }, version: { increment: 1 } },
+    });
+    expect(tx.walletPosition.updateMany).toHaveBeenCalledWith({
+      where: { id: 'pos-index', version: 5 },
+      data: { totalUnits: { decrement: 20n }, version: { increment: 1 } },
+    });
+
+    // AUM reduced by principal (cost), not proceeds.
+    expect(tx.profile.updateMany).toHaveBeenCalledWith({
+      where: { id: 'profile-1', version: 9 },
+      data: {
+        aum: { decrement: 3500n },
+        version: { increment: 1 },
+      },
+    });
+
+    // Single PROFIT_FEE ledger row carrying the derived idempotency key.
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-1',
+        walletId: 'wallet-1',
+        type: LedgerEntryType.PROFIT_FEE,
+        amount: 13n,
+        currency: Currency.EGP,
+        idempotencyKey: 'profit-fee:wd-key-1',
+      }),
+    });
+
+    // Hand-off event carries totals.
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    const [eventName, emittedPayload] = events.emit.mock.calls[0] as [
+      string,
+      EventsPayloads.WithdrawalFeeAppliedEventPayload,
+    ];
+    expect(eventName).toBe(
+      EventType.SystemEventType.WITHDRAWAL_FEE_APPLIED,
+    );
+    expect(emittedPayload.realizedProfit.amount).toBe(900n);
+    expect(emittedPayload.profitFee.amount).toBe(13n);
+    expect(emittedPayload.netToUser.amount).toBe(4387n);
+  });
+
+  it('charges zero fee when sold at a loss (no profit)', async () => {
+    const { prisma, tx } = buildWithdrawalPrismaMock({
+      positions: [
+        {
+          id: 'pos-gold',
+          assetClass: AssetClass.GOLD,
+          totalUnits: 100n,
+          averageBuyPrice: 300n, // bought higher than execution price → loss
+          version: 1,
+        },
+      ],
+    });
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await service.onWithdrawalRequested(
+      buildWithdrawalPayload({
+        sales: [
+          {
+            assetClass: AssetClass.GOLD,
+            units: 10n,
+            executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+          },
+        ],
+      }),
+    );
+
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: LedgerEntryType.PROFIT_FEE,
+        amount: 0n,
+      }),
+    });
+    const [, emittedPayload] = events.emit.mock.calls[0] as [
+      string,
+      EventsPayloads.WithdrawalFeeAppliedEventPayload,
+    ];
+    expect(emittedPayload.profitFee.amount).toBe(0n);
+    expect(emittedPayload.netToUser.amount).toBe(2000n); // proceeds intact
+  });
+
+  it('throws on position OCC conflict and does NOT emit next event', async () => {
+    const { prisma } = buildWithdrawalPrismaMock({ positionUpdateCount: 0 });
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await expect(
+      service.onWithdrawalRequested(buildWithdrawalPayload()),
+    ).rejects.toThrow(/position version mismatch/i);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it('throws when a sale references an unknown asset position', async () => {
+    const { prisma } = buildWithdrawalPrismaMock({ positions: [] });
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await expect(
+      service.onWithdrawalRequested(buildWithdrawalPayload()),
+    ).rejects.toThrow(/missing wallet position/i);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it('throws when requested units exceed position holdings', async () => {
+    const { prisma } = buildWithdrawalPrismaMock({
+      positions: [
+        {
+          id: 'pos-gold',
+          assetClass: AssetClass.GOLD,
+          totalUnits: 5n,
+          averageBuyPrice: 100n,
+          version: 1,
+        },
+      ],
+    });
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await expect(
+      service.onWithdrawalRequested(
+        buildWithdrawalPayload({
+          sales: [
+            {
+              assetClass: AssetClass.GOLD,
+              units: 10n,
+              executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(/insufficient units/i);
+  });
+
+  it('swallows P2002 duplicate-key (replay) and still emits next event', async () => {
+    const { prisma } = buildWithdrawalPrismaMock({
+      ledgerCreateError: { code: 'P2002', message: 'unique constraint' },
+    });
+    const service = new FeeEngineService(
+      prisma as unknown as PrismaService,
+      calculator,
+      events as unknown as EventEmitter2,
+    );
+
+    await expect(
+      service.onWithdrawalRequested(buildWithdrawalPayload()),
+    ).resolves.toBeUndefined();
+    expect(events.emit).toHaveBeenCalledTimes(1);
+  });
+});

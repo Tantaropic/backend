@@ -1,11 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { Money } from '../../common/domain/value-objects/money.vo';
-import { getFundFeeBps } from '../../common/constants/fee-registry';
+import {
+  getFundFeeBps,
+  getProfitFeeBps,
+} from '../../common/constants/fee-registry';
+import { Currency } from '../../common/enums';
 
 export interface FundFeeBreakdown {
   bps: number;
   fee: Money;
   net: Money;
+}
+
+export interface SaleInput {
+  units: bigint;
+  /** Per-unit market price at execution time (smallest unit). */
+  executionPrice: Money;
+  /** Per-unit weighted-average buy price from WalletPosition (smallest unit). */
+  averageBuyPrice: bigint;
+}
+
+export interface SaleProfitBreakdown {
+  proceeds: Money;
+  costOfSold: Money;
+  realizedProfit: Money;
+}
+
+export interface ProfitFeeBreakdown {
+  bps: number;
+  fee: Money;
 }
 
 @Injectable()
@@ -24,5 +47,48 @@ export class FeeCalculatorService {
     const fee = gross.multiplyByBps(bps);
     const net = gross.subtract(fee);
     return { bps, fee, net };
+  }
+
+  /**
+   * WAC-based per-asset profit calculation for a withdrawal sale slice.
+   *
+   *   proceeds        = units * executionPrice
+   *   costOfSold      = units * averageBuyPrice
+   *   realizedProfit  = max(0, proceeds - costOfSold)
+   *
+   * `averageBuyPrice` is unchanged by sells (WAC invariant) — only `units` decreases
+   * on the wallet position.
+   */
+  calculateRealizedProfit(sale: SaleInput): SaleProfitBreakdown {
+    if (sale.units < 0n) {
+      throw new Error('Sale units must be non-negative');
+    }
+    const currency: Currency = sale.executionPrice.currency;
+    const proceeds = Money.fromSmallestUnit(
+      sale.units * sale.executionPrice.amount,
+      currency,
+    );
+    const costOfSold = Money.fromSmallestUnit(
+      sale.units * sale.averageBuyPrice,
+      currency,
+    );
+
+    const profitAmount =
+      proceeds.amount > costOfSold.amount
+        ? proceeds.amount - costOfSold.amount
+        : 0n;
+    const realizedProfit = Money.fromSmallestUnit(profitAmount, currency);
+
+    return { proceeds, costOfSold, realizedProfit };
+  }
+
+  /**
+   * Tiered profit fee (BPS bracket based on the realized-profit amount).
+   * Fee is zero when there is no profit (rule from user-stories #3).
+   */
+  calculateProfitFee(realizedProfit: Money): ProfitFeeBreakdown {
+    const bps = getProfitFeeBps(realizedProfit.amount);
+    const fee = realizedProfit.multiplyByBps(bps);
+    return { bps, fee };
   }
 }
