@@ -15,12 +15,13 @@ datasource db {
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
 enum LedgerEntryType {
-  SWEEP
-  INBOUND_TRANSFER
+  ROUNDUP
+  USER_DEPOSIT
+  USER_WITHDRAWAL
   ASSET_ALLOCATION
-  REDEMPTION
-  FUND_FEE
-  PROFIT_FEE
+  ASSET_REDEMPTION
+  FUND_FEE         // On User Deposit and RoundUp
+  PROFIT_FEE       // on asset redemption Profit
 }
 
 enum AssetClass {
