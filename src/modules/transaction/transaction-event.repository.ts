@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Currency } from '../../common/enums';
-import { TransactionEvent } from '@prisma/client';
+import { TransactionEvent, Prisma } from '@prisma/client';
 import { BaseRepository } from '../../common/repositories/base.repository';
 import { PrismaService } from '../../database/prisma/prisma.service';
 
@@ -11,7 +11,7 @@ export interface SaveTransactionEventData {
   amount: bigint;
   currency: Currency;
   occurredAt: Date;
-  rawPayload?: any;
+  rawPayload?: Prisma.InputJsonValue;
   idempotencyKey: string;
 }
 
