@@ -47,3 +47,58 @@ export type AssetPriceChangedEventPayload = {
   asset: AssetClass;
   assetPrice: Money;
 } & BaseEventPayload;
+
+// Fee Engine events payload.
+
+/**
+ * Emitted by the Bank Integration after a round-up has been debited from the user's
+ * external bank and credited (gross) to their in-app wallet. Triggers FUND_FEE deduction.
+ */
+export type RoundupDebitedEventPayload = {
+  userId: string;
+  walletId: string;
+  transactionEventId: string;
+  grossAmount: Money;
+  idempotencyKey: string;
+} & BaseEventPayload;
+
+/**
+ * Emitted by the Fee Engine after FUND_FEE has been deducted from the gross round-up.
+ * Consumed by the Asset Allocator to perform the 24/75/1 split on the net amount.
+ */
+export type FundsReadyForInvestmentEventPayload = {
+  userId: string;
+  walletId: string;
+  transactionEventId: string;
+  netAmount: Money;
+  idempotencyKey: string;
+} & BaseEventPayload;
+
+/**
+ * Emitted by the Withdrawal Service before any sells are executed. Carries the per-asset
+ * sale plan so the Fee Engine can compute realized profit (WAC) and the PROFIT_FEE.
+ */
+export type WithdrawalRequestedEventPayload = {
+  userId: string;
+  walletId: string;
+  withdrawalRequestId: string;
+  idempotencyKey: string;
+  sales: Array<{
+    assetClass: AssetClass;
+    units: bigint;
+    executionPrice: Money;
+  }>;
+} & BaseEventPayload;
+
+/**
+ * Emitted by the Fee Engine after PROFIT_FEE has been posted to the ledger.
+ * Consumed by the Withdrawal Service to finalize the net cash transfer to the user.
+ */
+export type WithdrawalFeeAppliedEventPayload = {
+  userId: string;
+  walletId: string;
+  withdrawalRequestId: string;
+  realizedProfit: Money;
+  profitFee: Money;
+  netToUser: Money;
+} & BaseEventPayload;

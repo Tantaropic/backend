@@ -53,7 +53,7 @@ export function replaceBigInts<T>(data: T): ReplaceBigInts<T> {
 
   // 3. Handle Arrays safely
   if (Array.isArray(data)) {
-    return data.map((item) =>
+    return (data as unknown[]).map((item) =>
       replaceBigInts(item),
     ) as unknown as ReplaceBigInts<T>;
   }
