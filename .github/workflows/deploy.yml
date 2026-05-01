@@ -21,3 +21,4 @@ jobs:
           appSourcePath: ${{ github.workspace }}
           resourceGroup: tantaropic-rg
           containerAppName: tantaropic-api
+          acrName: ca07fe8ab50eacr
