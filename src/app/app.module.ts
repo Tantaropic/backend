@@ -9,8 +9,11 @@ import { MockBankModule } from '../external-api/mock-bank/mock-bank.module';
 import { ExchangeIntegrationModule } from '../modules/exchange-integration/exchange-integration.module';
 import { MockExchangeModule } from '../external-api/mock-exchange/mock-exchange.module';
 import { HttpModule } from '../common/http/http.module';
+import { LlmModule } from '../common/llm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { BankIntegrationModule } from '../modules/bank-integration/bank-integration.module';
+import { AiInsightsModule } from '../modules/ai-insights/ai-insights.module';
 import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.module';
 
 @Module({
@@ -24,12 +27,14 @@ import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.mo
     ExchangeIntegrationModule,
     MockExchangeModule,
     HttpModule,
+    LlmModule,
     BankIntegrationModule,
+    AiInsightsModule,
     RoundUpEngineModule,
     EventEmitterModule.forRoot({
       wildcard: true,
-      verboseMemoryLeak: true,
     }),
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [],
