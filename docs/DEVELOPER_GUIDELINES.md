@@ -61,3 +61,38 @@ All internal and integration endpoints must sit behind the global `api/v1` prefi
 The platform uses `@nestjs/event-emitter` to decouple modules. 
 Events and their payload structures are strictly typed in `src/common/events`.
 When cross-domain reactions are required (e.g. `BankIntegrationService` receiving a webhook that must trigger the `Ledger`), the initiating service emits a strongly-typed event (`EventType.SystemEventType.BANK_TRANSACTION_WEBHOOK_RECEIVED`) rather than injecting the target service directly.
+
+## 9. Ledger & Double-Entry Accounting
+
+To ensure an immutable audit trail and prevent discrepancies, all financial movements must use a double-entry style accounting system implemented within a single ACID transaction.
+
+**Example: User Deposit Workflow**
+When a user deposits funds (e.g., via a bank webhook), the following steps must be executed atomically:
+
+1. **TransactionEvent (Optional):** Record the raw webhook payload in the `TransactionEvent` table for tracing.
+2. **Ledger Entries (The Audit Trail):** Insert two distinct rows into the `LedgerEntry` table to properly account for fees:
+   - **Gross Deposit:** `type: USER_DEPOSIT`, `amount: +[Gross Amount]`
+   - **Fee Deduction:** `type: FUND_FEE`, `amount: -[Fee Amount]`
+3. **Digital Wallet Update (The State):** Update the user's `DigitalWallet.fiatBalance` by adding the *net* amount (Gross - Fee). This step must utilize **Optimistic Concurrency Control (OCC)** via the `version` field.
+
+This separation ensures that a user's current wallet balance can always be recalculated and verified by summing their historical ledger entries.
+
+## 10. Profile as Aggregate Root
+
+The `Profile` entity serves as the **Aggregate Root** for a tenant workspace (e.g., a family unit). 
+- A `Profile` owns a single `DigitalWallet`.
+- A `Profile` can have multiple `User` members.
+- Initialization of these entities must be **atomic**.
+
+## 11. Atomic Bootstrapping
+
+When creating a new "Family" or "Profile", we must ensure that the `Profile`, its shared `DigitalWallet`, and the initial `User` are created within a single transaction.
+
+- **Service Layer**: `ProfilesService` orchestrates the creation.
+- **Repository Layer**: `ProfileRepository.createProfileWithWalletAndUser` implements the nested Prisma transaction.
+- **Logic**: 
+  1. Create `Profile` and `DigitalWallet`.
+  2. Create `User` linked to the new `Profile`.
+  3. Return the fully initialized aggregate.
+
+This prevents "half-baked" state where a user exists without a wallet or a profile exists without a user.

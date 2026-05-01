@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TransactionEventRepository } from '../transaction/transaction-event.repository';
 import { Money } from '../../common/domain/value-objects/money.vo';
 import {
   type IFundTransferRequest,
@@ -9,7 +10,10 @@ import {
   type ISimulateTransactionResponseDto,
 } from '../../common/interfaces/bank-provider.interface';
 import { HttpClientService } from '../../common/http';
-import { StringifiedJSON, serialize } from '../../common/helpers/json-helper';
+import {
+  replaceBigInts,
+  ReplaceBigInts,
+} from '../../common/helpers/json-helper';
 import {
   DebitRequestDto,
   DebitResponseDto,
@@ -38,6 +42,7 @@ export class BankIntegrationService implements IBankProvider {
     private readonly http: HttpClientService,
     private readonly config: ConfigService,
     private readonly eventService: EventEmitter2,
+    private readonly transactionEventRepo: TransactionEventRepository,
   ) {
     const baseUrl = this.config.get<string>(
       'BASE_URL',
@@ -73,11 +78,11 @@ export class BankIntegrationService implements IBankProvider {
     };
 
     const payloadStringified =
-      serialize<SimulateTransactionRequestDto>(externalPayload);
+      replaceBigInts<SimulateTransactionRequestDto>(externalPayload);
 
     try {
       const response = await this.http.post<
-        StringifiedJSON<SimulateTransactionRequestDto>,
+        ReplaceBigInts<SimulateTransactionRequestDto>,
         SimulateTransactionResponseDto
       >(this.bankSimulateTransactionUrl, payloadStringified);
 
@@ -91,17 +96,48 @@ export class BankIntegrationService implements IBankProvider {
     }
   }
 
-  handleTransactionWebhook(
+  async handleTransactionWebhook(
     payload: TransactionWebhookRequestDto,
-  ): TransactionWebhookResponseDto {
+  ): Promise<TransactionWebhookResponseDto> {
     this.logger.log(`Handling transaction webhook for user ${payload.userId}`);
 
+    // Idempotency: skip if this transactionId was already processed
+    const existing = await this.transactionEventRepo.findByTransactionId(
+      payload.transactionId,
+    );
+    if (existing) {
+      this.logger.log(
+        `Duplicate webhook ignored for txn ${payload.transactionId}`,
+      );
+      return { success: true, transactionId: payload.transactionId };
+    }
+
+    // Convert to domain Money VO at the ACL boundary
+    const money = Money.fromMinorUnit(payload.amount, payload.currency);
+
+    // Persist the raw transaction event before emitting
+    const txEvent = await this.transactionEventRepo.saveFromWebhook({
+      userId: payload.userId,
+      transactionId: payload.transactionId,
+      merchantTag: payload.merchantTag,
+      amount: payload.amount,
+      currency: payload.currency,
+      occurredAt: new Date(payload.occurredAt),
+      rawPayload: payload,
+      idempotencyKey: payload.transactionId,
+    });
+
+    // Emit domain event for downstream engines (Round-Up, etc.)
     const eventPayload: EventsPayloads.TransactionWebhookReceivedEventPayload =
       {
         timestamp: new Date(),
         userId: payload.userId,
         transactionId: payload.transactionId,
-        money: Money.fromSmallestUnit(payload.amount, payload.currency),
+        transactionEventId: txEvent.id,
+        money,
+        merchantTag: payload.merchantTag,
+        idempotencyKey: txEvent.id,
+        occurredAt: new Date(payload.occurredAt),
       };
 
     this.eventService.emit(
@@ -111,7 +147,7 @@ export class BankIntegrationService implements IBankProvider {
 
     return {
       success: true,
-      transactionId: eventPayload.transactionId,
+      transactionId: payload.transactionId,
     };
   }
 
@@ -121,19 +157,21 @@ export class BankIntegrationService implements IBankProvider {
   async debit(payload: IFundTransferRequest): Promise<IFundTransferResult> {
     this.logger.log(`Initiating external DEBIT for user ${payload.userId}`);
 
+    const { currency, amount } = payload.money.toPrimitives();
     const externalPayload: DebitRequestDto = {
       userId: payload.userId,
-      ...payload.money.toPrimitives(),
+      currency,
+      amount,
       idempotencyKey: payload.idempotencyKey,
       metadata: payload.metadata,
     };
 
-    const payloadStringified = serialize<DebitRequestDto>(externalPayload);
+    const payloadStringified = replaceBigInts<DebitRequestDto>(externalPayload);
 
     try {
       // Execute external HTTP call via the ACL boundary
       const response = await this.http.post<
-        StringifiedJSON<DebitRequestDto>,
+        ReplaceBigInts<DebitRequestDto>,
         DebitResponseDto
       >(this.bankDebitUrl, payloadStringified);
 
@@ -158,12 +196,13 @@ export class BankIntegrationService implements IBankProvider {
       metadata: payload.metadata,
     };
 
-    const payloadStringified = serialize<DepositRequestDto>(externalPayload);
+    const payloadStringified =
+      replaceBigInts<DepositRequestDto>(externalPayload);
 
     try {
       // Execute external HTTP call via the ACL boundary
       const response = await this.http.post<
-        StringifiedJSON<DepositRequestDto>,
+        ReplaceBigInts<DepositRequestDto>,
         DepositResponseDto
       >(this.bankDepositUrl, payloadStringified);
 
@@ -188,7 +227,7 @@ export class BankIntegrationService implements IBankProvider {
       userId: external.userId,
       money:
         external.amount !== undefined && external.currency !== undefined
-          ? Money.fromSmallestUnit(external.amount, external.currency)
+          ? Money.fromMinorUnit(external.amount, external.currency)
           : undefined,
     };
   }
