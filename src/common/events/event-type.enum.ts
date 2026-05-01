@@ -18,4 +18,5 @@ export enum SystemEventType {
   FUNDS_READY_FOR_INVESTMENT = 'funds.ready_for_investment',
   WITHDRAWAL_REQUESTED = 'withdrawal.requested',
   WITHDRAWAL_FEE_APPLIED = 'withdrawal.fee_applied',
+  WALLET_VALUE_PROJECTED = 'wallet.value_projected',
 }
