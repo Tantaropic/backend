@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LedgerEntry } from '@prisma/client';
+import { LedgerEntry, Prisma } from '@prisma/client';
 import { BaseRepository } from '../../common/repositories/base.repository';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { Money } from '../../common/domain/value-objects/money.vo';
@@ -24,10 +24,10 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
   async saveEntry(
     data: LedgerEntryDto,
     money: Money,
-    tx?: any,
+    tx?: Prisma.TransactionClient,
   ): Promise<LedgerEntry> {
     const { amount, currency } = money;
-    const client = tx || this.prisma;
+    const client = tx ?? this.prisma;
 
     return await client.ledgerEntry.create({
       data: {

@@ -223,6 +223,24 @@ export class Money {
   // ─── Serialisation ────────────────────────────────────────────────────────
 
   /**
+   * Divides the Money amount by a given divisor. Throws if the divisor is zero.
+   * Returns both the quotient and the remainder as Money objects.
+   */
+  public divideWithRemainder(divisor: bigint | number): {
+    quotient: Money;
+    remainder: Money;
+  } {
+    if (divisor === 0 || divisor === 0n)
+      throw new Error('Divisor cannot be zero');
+    const d = typeof divisor === 'number' ? BigInt(divisor) : divisor;
+    return {
+      quotient: new Money(this.amount / d, this.currency, MoneyUnit.MINOR),
+      remainder: new Money(this.amount % d, this.currency, MoneyUnit.MINOR),
+    };
+  }
+
+  /**
+   * Unwraps the Money object into flat primitives for external API calls, DTOs, or database persistence.
    * Unwraps the Money object into flat primitives for DB persistence, DTOs, or external APIs.
    * Always yields the **minor-unit** amount to guarantee correct storage.
    */
@@ -238,6 +256,20 @@ export class Money {
       currency: this.currency,
       unit: MoneyUnit.MINOR,
     };
+  }
+
+  /**
+   * MultiplyByBps multiplies the Money amount by a basis points value (e.g., for interest calculations).
+   */
+  public multiplyByBps(bps: number): Money {
+    if (!Number.isInteger(bps) || bps < 0) {
+      throw new Error('BPS must be a non-negative integer');
+    }
+    return new Money(
+      (this.amount * BigInt(bps)) / 10_000n,
+      this.currency,
+      MoneyUnit.MINOR,
+    );
   }
 
   /** Debug-friendly string. e.g. "5000 Piasters (EGP)" or "50 Pounds (EGP)". */
