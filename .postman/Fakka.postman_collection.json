@@ -1,0 +1,283 @@
+{
+  "info": {
+    "_postman_id": "df6041f9-5e87-43b3-929b-7325c4e2018b",
+    "name": "Fakka",
+    "description": "Collection for testing Tantaropic backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47110543"
+  },
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Update User Settings",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskProfile\": \"AGGRESSIVE\",\n  \"targetGoal\": 5000000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/:id/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "bafae74e-73fa-49d8-9f45-88566d4a2569"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Create User for Profile",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"name\": \"Jane Doe\",\n  \"profileId\": \"PASTE_PROFILE_ID_HERE\",\n  \"riskProfile\": \"MODERATE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/:profileId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "profile",
+                ":profileId"
+              ],
+              "variable": [
+                {
+                  "key": "profileId"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileName\": \"Habash Family\",\n  \"email\": \"bahi@example.com\",\n  \"userName\": \"Bahi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List All Profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id/wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                ":id",
+                "wallet"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "e8b59b3f-2ce1-4196-82f9-af6888b28a17"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "e8b59b3f-2ce1-4196-82f9-af6888b28a17"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create-Random",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileName\": \"Habash Family\",\n  \"email\": \"bahi@example.com\",\n  \"userName\": \"Bahi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/create-random",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "create-random"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": []
+    },
+    {
+      "name": "Simulate",
+      "item": [
+        {
+          "name": "Simulate Deposit",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/:id/simulate-deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id",
+                "simulate-deposit"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "57b1ea18-e506-4fd1-bc62-76599e782490"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get User Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id",
+                "dashboard"
+              ],
+              "variable": [
+                {
+                  "key": "id"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
