@@ -11,6 +11,7 @@ import { MockExchangeModule } from '../external-api/mock-exchange/mock-exchange.
 import { HttpModule } from '../common/http/http.module';
 import { LlmModule } from '../common/llm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { BankIntegrationModule } from '../modules/bank-integration/bank-integration.module';
 import { AiInsightsModule } from '../modules/ai-insights/ai-insights.module';
 import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.module';
@@ -33,6 +34,7 @@ import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.mo
     EventEmitterModule.forRoot({
       wildcard: true,
     }),
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [],

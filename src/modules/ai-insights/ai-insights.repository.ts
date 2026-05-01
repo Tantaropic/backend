@@ -29,4 +29,36 @@ export class AiInsightsRepository extends BaseRepository<AiInsight> {
   async findByIdempotencyKey(key: string): Promise<AiInsight | null> {
     return this.db.findUnique({ where: { idempotencyKey: key } });
   }
+
+  /**
+   * Returns all wallets that have any activity (positions OR non-zero fiat balance),
+   * along with the userIds attached to the owning profile. Used by the daily pulse cron.
+   */
+  async findActiveWalletsWithUsers(): Promise<
+    Array<{
+      walletId: string;
+      profileId: string;
+      fiatBalance: bigint;
+      userIds: string[];
+      positions: Array<{ totalUnits: bigint; averageBuyPrice: bigint }>;
+    }>
+  > {
+    const wallets = await this.prisma.digitalWallet.findMany({
+      where: {
+        OR: [{ fiatBalance: { gt: 0n } }, { positions: { some: {} } }],
+      },
+      include: {
+        positions: { select: { totalUnits: true, averageBuyPrice: true } },
+        profile: { include: { users: { select: { id: true } } } },
+      },
+    });
+
+    return wallets.map((w) => ({
+      walletId: w.id,
+      profileId: w.profileId,
+      fiatBalance: w.fiatBalance,
+      userIds: w.profile.users.map((u) => u.id),
+      positions: w.positions,
+    }));
+  }
 }

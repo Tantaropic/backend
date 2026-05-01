@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
+import { Cron } from '@nestjs/schedule';
 import { AiInsightsRepository } from './ai-insights.repository';
 import { EventType } from '../../common/events';
 import type {
@@ -10,7 +11,12 @@ import type {
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { LlmService } from '../../common/llm';
 import type { AiInsight } from '@prisma/client';
-import { NUDGE_WORTHY_TAGS, MILESTONES } from '../../common/constants';
+import {
+  NUDGE_WORTHY_TAGS,
+  MILESTONES,
+  DAILY_PULSE_CRON,
+  DAILY_PULSE_TZ,
+} from '../../common/constants';
 
 @Injectable()
 export class AiInsightsService {
@@ -171,7 +177,7 @@ export class AiInsightsService {
     amountSpent: number,
     recentCount: number,
   ): Promise<string> {
-    const systemPrompt = `انت مستشار مالي ودود لتطبيق Tantaropic، تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
+    const systemPrompt = `انت مستشار مالي ودود لتطبيق فكه تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
 مهمتك إنك تشجع المستخدمين بلطف إنهم يستثمروا بدل ما يصرفوا زيادة.
 اكتب بالعامية المصرية بأسلوب دافي ومحفز، وخلي الرسالة قصيرة (جملتين أو تلاتة بالكتير).
 متبقاش حكم على حد ولا تبقى رسمي زيادة. ركز على إن الفلوس دي ممكن تتحول لإيه لو اتستثمرت.
@@ -194,7 +200,7 @@ export class AiInsightsService {
     milestone: number,
     currentBalance: number,
   ): Promise<string> {
-    const systemPrompt = `انت مستشار مالي ودود لتطبيق Tantaropic، تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
+    const systemPrompt = `انت مستشار مالي ودود لتطبيق فكه, تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
 مهمتك إنك تحتفل مع المستخدم لما يوصل لإنجاز جديد في محفظته.
 اكتب بالعامية المصرية بأسلوب دافي وفرحان، وخلي الرسالة قصيرة (جملتين أو تلاتة بالكتير).
 اعترف بالتزامه وشجعه إنه يكمل. استخدم كلام بسيط ومتحطش أي إيموجي.`;
@@ -208,6 +214,98 @@ export class AiInsightsService {
       // 2–3 sentences ≈ ~80 tokens; 150 leaves ~1.5× headroom.
       maxTokens: 150,
       fallback: `مبروك! محفظتك عدت ${String(milestone)} جنيه!`,
+    });
+  }
+
+  // ─── Daily Portfolio Pulse ────────────────────────────────────────────────
+
+  /**
+   * Daily 09:00 Africa/Cairo job: walks every active wallet, computes net
+   * portfolio value, and writes a motivational AiInsight row PER USER in the
+   * wallet's profile. Idempotent per (userId, day).
+   */
+  @Cron(DAILY_PULSE_CRON, { timeZone: DAILY_PULSE_TZ, name: 'ai-daily-pulse' })
+  async handleDailyPortfolioPulse(): Promise<void> {
+    this.logger.log('Daily portfolio pulse: starting');
+
+    const wallets = await this.repository.findActiveWalletsWithUsers();
+    if (wallets.length === 0) {
+      this.logger.log('Daily pulse: no active wallets, skipping');
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    for (const wallet of wallets) {
+      const { fiatBalance, positions, userIds, walletId } = wallet;
+      if (userIds.length === 0) continue;
+
+      const hasPositions = positions.some((p) => p.totalUnits > 0n);
+      if (fiatBalance <= 0n && !hasPositions) continue;
+
+      // No live price feed yet → current value == net invested
+      // (averageBuyPrice × units). Unrealized profit therefore = 0 for now.
+      const netInvestedMinor = positions.reduce(
+        (acc, p) => acc + p.totalUnits * p.averageBuyPrice,
+        0n,
+      );
+      const totalNetMajor = Number((netInvestedMinor + fiatBalance) / 100n);
+
+      try {
+        const message = await this.generatePortfolioPulse(totalNetMajor);
+
+        for (const userId of userIds) {
+          const insightKey = `pulse-${userId}-${today}`;
+          try {
+            const insight = await this.repository.saveInsight({
+              userId,
+              message,
+              idempotencyKey: insightKey,
+              triggerTag: 'daily_pulse',
+            });
+
+            const eventPayload: AiInsightGeneratedEventPayload = {
+              userId,
+              insightId: insight.id,
+              message,
+            };
+            this.eventService.emit(
+              EventType.SystemEventType.AI_INSIGHT_GENERATED,
+              eventPayload,
+            );
+          } catch (error: unknown) {
+            if (this.isDuplicateKeyError(error)) continue;
+            this.logger.error(
+              `Daily pulse: failed to save insight for user ${userId}: ${String(error)}`,
+            );
+          }
+        }
+      } catch (error: unknown) {
+        this.logger.error(
+          `Daily pulse: failed for wallet ${walletId}: ${String(error)}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Daily portfolio pulse: processed ${String(wallets.length)} wallets`,
+    );
+  }
+
+  private async generatePortfolioPulse(netMajor: number): Promise<string> {
+    const systemPrompt = `انت مستشار مالي ودود لتطبيق فكه، تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
+مهمتك إنك تبعت رسالة يومية قصيرة للمستخدم تخليه يحس إن فلوسه بتكبر وتحفزه يكمل.
+اكتب بالعامية المصرية بأسلوب دافي ومحفز، وخلي الرسالة قصيرة (جملتين أو تلاتة بالكتير).
+ركز على إن كل جنيه بيتجمع بيقربه من هدفه. متحطش أي إيموجي.`;
+
+    const userPrompt = `إجمالي محفظة المستخدم النهاردة ${String(netMajor)} جنيه (نقدي + استثمارات).
+اكتبله رسالة قصيرة بالعامية المصرية تشجعه ويحس إن فلوسه بتكبر ويكمل في طريقه.`;
+
+    return this.llm.complete({
+      systemPrompt,
+      userPrompt,
+      maxTokens: 150,
+      fallback: `محفظتك دلوقتي ${String(netMajor)} جنيه — كمل، كل يوم بتقرب من هدفك!`,
     });
   }
 
