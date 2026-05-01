@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   I_BANK_PROVIDER,
   type IBankProvider,
+  type IFundTransferResult,
 } from '../../common/interfaces/bank-provider.interface';
 import { LedgerEntryType } from '../../common/enums';
 import { EventType, EventsPayloads } from '../../common/events';
@@ -11,6 +12,7 @@ import { TransactionEventRepository } from '../transaction/transaction-event.rep
 import { LedgerRepository } from '../ledger/ledger.repository';
 import { UserRepository } from '../users/user.repository';
 import { calculateRoundUp } from './roundup.calculator';
+import { Money } from '../../common/domain/value-objects/money.vo';
 
 /**
  * Round-Up Engine — listens for incoming bank transaction events,
@@ -25,6 +27,7 @@ import { calculateRoundUp } from './roundup.calculator';
 @Injectable()
 export class RoundUpEngineService {
   private readonly logger = new Logger(RoundUpEngineService.name);
+  private readonly transactionWebHookIdempotencyMap: Set<string> = new Set();
 
   constructor(
     @Inject(I_BANK_PROVIDER)
@@ -55,10 +58,30 @@ export class RoundUpEngineService {
       transactionEventId,
       money,
       merchantTag,
-      idempotencyKey,
+      idempotencyKey: transactionWebHookIdempotencyKey,
     } = payload;
 
-    this.logger.log(`Processing round-up for txn ${transactionId}`);
+    // ─── 0. Check idempotency key & validate user ───
+    if (transactionWebHookIdempotencyKey) {
+      if (
+        this.transactionWebHookIdempotencyMap.has(
+          transactionWebHookIdempotencyKey,
+        )
+      ) {
+        this.logger.log(
+          `Transaction webhook idempotency key already exists for txn ${transactionWebHookIdempotencyKey}`,
+        );
+        return;
+      }
+
+      this.transactionWebHookIdempotencyMap.add(
+        transactionWebHookIdempotencyKey,
+      );
+    }
+
+    this.logger.log(
+      `Processing round-up for txn ${transactionWebHookIdempotencyKey}`,
+    );
 
     const user = await this.userRepository.getUser(userId);
     if (!user) {
@@ -66,32 +89,25 @@ export class RoundUpEngineService {
       return;
     }
 
-    const roundUpStep = user.roundUpStep;
-
     // ─── 1. Calculate round-up ───
-    const roundUpMoney = calculateRoundUp(money, roundUpStep);
-    const debitIdempotencyKey = `roundup-${idempotencyKey ?? transactionId}`;
+    const roundUpMoney = calculateRoundUp(money, user.roundUpStep);
 
     this.logger.log(
       `Round-up calculated: ${roundUpMoney.amount} piasters for txn ${transactionId}`,
     );
 
     // ─── 2. Collect funds from user's bank ───
-    const debitResult = await this.bankProvider.debit({
+    const debitResult = await this.debitUser(
       userId,
-      money: roundUpMoney,
-      idempotencyKey: debitIdempotencyKey,
-      metadata: {
-        source: 'roundup-engine',
-        originalTransactionId: transactionId,
-      },
-    });
+      roundUpMoney,
+      transactionId,
+    );
 
-    if (!debitResult.success) {
+    if (!debitResult || !debitResult.success) {
       this.logger.error(
-        `Fund collection failed for txn ${transactionId}: ${debitResult.message}`,
+        `Fund roundup collection failed for txn ${transactionId}`,
       );
-      throw new Error(`Round-up collection failed: ${debitResult.message}`);
+      throw new Error(`Round-up collection failed`);
     }
 
     // ─── 3. Write ROUNDUP ledger entry ───
@@ -100,7 +116,7 @@ export class RoundUpEngineService {
         userId,
         type: LedgerEntryType.ROUNDUP,
         transactionEventId,
-        idempotencyKey: `ledger-roundup-${idempotencyKey ?? transactionId}`,
+        idempotencyKey: debitResult.idempotencyKey,
         note: `Round-up from ${merchantTag ?? 'unknown'} transaction`,
       },
       roundUpMoney,
@@ -120,7 +136,7 @@ export class RoundUpEngineService {
       transactionEventId,
       grossRoundUpAmount: roundUpMoney,
       merchantTag,
-      idempotencyKey: debitIdempotencyKey,
+      idempotencyKey: debitResult.idempotencyKey,
     };
 
     this.eventEmitter.emit(
@@ -131,5 +147,28 @@ export class RoundUpEngineService {
     this.logger.log(
       `Round-up complete: ${roundUpMoney.toMinorUnit().amount} piasters collected for txn ${transactionId}`,
     );
+  }
+
+  private async debitUser(
+    userId: string,
+    amount: Money,
+    transactionId?: string,
+  ): Promise<IFundTransferResult & { idempotencyKey: string }> {
+    const idempotencyKey = this.getRoundupIdempotencyKey(transactionId);
+    const debitResult = await this.bankProvider.debit({
+      userId,
+      money: amount,
+      idempotencyKey,
+      metadata: {
+        source: 'roundup-engine',
+        originalTransactionId: transactionId,
+      },
+    });
+
+    return { ...debitResult, idempotencyKey };
+  }
+
+  private getRoundupIdempotencyKey(transactionId?: string): string {
+    return `roundup-${transactionId ?? crypto.randomUUID()}`;
   }
 }
