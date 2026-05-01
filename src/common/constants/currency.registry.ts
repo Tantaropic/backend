@@ -1,15 +1,30 @@
-import { Currency } from '../enums/index';
+import { Currency, MoneyUnit } from '../enums';
 
-export const CurrencyRegistry = {
+/**
+ * Human-readable names for the major and minor currency units.
+ * e.g. { [MoneyUnit.MAJOR]: 'Pound', [MoneyUnit.MINOR]: 'Piaster' }
+ */
+export interface Denomination {
+  [MoneyUnit.MAJOR]: string;
+  [MoneyUnit.MINOR]: string;
+}
+
+export interface CurrencyConfig {
+  /** Conversion factor: 1 major unit = multiplier minor units (e.g. 100 for EGP). */
+  multiplier: bigint;
+  denomination: Denomination;
+}
+
+export const CurrencyRegistry: Record<Currency, CurrencyConfig> = {
   [Currency.EGP]: {
-    multiplier: BigInt(100),
-    majorUnit: 'Pound',
-    minorUnit: 'Piaster',
+    multiplier: 100n,
+    denomination: {
+      [MoneyUnit.MAJOR]: 'Pound',
+      [MoneyUnit.MINOR]: 'Piaster',
+    },
   },
-  // USD: {
-  //   code: 'USD',
-  //   multiplier: BigInt(100),
-  //   majorUnit: 'Dollar',
-  //   minorUnit: 'Cent',
+  // [Currency.USD]: {
+  //   multiplier: 100n,
+  //   denomination: { majorUnit: 'Dollar', minorUnit: 'Cent' },
   // },
 } as const;
