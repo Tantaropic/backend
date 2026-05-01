@@ -52,12 +52,12 @@ describe('PriceFeedService', () => {
   describe('tick (lazy seed)', () => {
     it('emits ASSET_PRICE_CHANGED for every asset on first tick', async () => {
       exchange.getLatestPrice.mockImplementation((asset: AssetClass) => {
-        const prices: Record<AssetClass, bigint> = {
+        const prices: Partial<Record<AssetClass, bigint>> = {
           [AssetClass.GOLD]: 45_000n,
           [AssetClass.INDEX_FUND]: 12_000n,
           [AssetClass.HIGH_RISK]: 8_500n,
         };
-        return Promise.resolve(goldPrice(prices[asset]));
+        return Promise.resolve(goldPrice(prices[asset] ?? 0n));
       });
 
       const service = newService();

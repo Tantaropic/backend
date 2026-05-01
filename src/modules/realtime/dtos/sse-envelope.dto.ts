@@ -33,7 +33,11 @@ export interface SseEnvelope {
 // ─── Serialization Helpers ───────────────────────────────────────────────────
 
 /**
- * Convert a Money VO to a plain, JSON-safe object.
+ * Convert a Money VO to a plain, JSON-safe object in **major units**
+ * (e.g. EGP rather than piasters) so all client-facing amounts are consistent
+ * regardless of whether the producer constructed the Money via `fromMinorUnit`
+ * or `fromMajorUnit`.
+ *
  * @param money - The Money value object to serialize.
  * @returns `{ amount: string, currency: string }` with BigInt stringified.
  */
@@ -41,9 +45,10 @@ export function serializeMoney(money: Money): {
   amount: string;
   currency: string;
 } {
+  const major = money.toMajorUnit();
   return {
-    amount: money.amount.toString(),
-    currency: money.currency,
+    amount: major.amount.toString(),
+    currency: major.currency,
   };
 }
 
