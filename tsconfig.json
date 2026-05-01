@@ -13,6 +13,8 @@
     "paths": {
       "*": ["./*"]
     },
+    "types": ["jest", "node"],
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
     "noImplicitAny": false,

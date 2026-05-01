@@ -107,17 +107,19 @@ describe('FeeEngineService - onRoundupDebited (FUND_FEE)', () => {
     });
 
     // Ledger row carries the derived idempotency key + correct type/amount.
-    expect(tx.ledgerEntry.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: 'user-1',
-        walletId: 'wallet-1',
-        type: LedgerEntryType.FUND_FEE,
-        amount: 5n,
-        currency: Currency.EGP,
-        transactionEventId: 'txev-1',
-        idempotencyKey: 'fund-fee:rd-key-1',
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining<Record<string, unknown>>({
+        data: expect.objectContaining<Record<string, unknown>>({
+          userId: 'user-1',
+          walletId: 'wallet-1',
+          type: LedgerEntryType.FUND_FEE,
+          amount: 5n,
+          currency: Currency.EGP,
+          transactionEventId: 'txev-1',
+          idempotencyKey: 'fund-fee:rd-key-1',
+        }),
       }),
-    });
+    );
 
     // Hand-off event carries NET amount, propagates upstream idempotency key.
     expect(events.emit).toHaveBeenCalledTimes(1);
@@ -211,8 +213,8 @@ describe('FeeEngineService - onRoundupDebited (FUND_FEE)', () => {
 
     // 1000 * 40 / 10_000 = 4
     expect(tx.digitalWallet.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
+      expect.objectContaining<Record<string, unknown>>({
+        data: expect.objectContaining<Record<string, unknown>>({
           fiatBalance: { decrement: 4n },
         }),
       }),
@@ -365,16 +367,18 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
     });
 
     // Single PROFIT_FEE ledger row carrying the derived idempotency key.
-    expect(tx.ledgerEntry.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: 'user-1',
-        walletId: 'wallet-1',
-        type: LedgerEntryType.PROFIT_FEE,
-        amount: 13n,
-        currency: Currency.EGP,
-        idempotencyKey: 'profit-fee:wd-key-1',
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining<Record<string, unknown>>({
+        data: expect.objectContaining<Record<string, unknown>>({
+          userId: 'user-1',
+          walletId: 'wallet-1',
+          type: LedgerEntryType.PROFIT_FEE,
+          amount: 13n,
+          currency: Currency.EGP,
+          idempotencyKey: 'profit-fee:wd-key-1',
+        }),
       }),
-    });
+    );
 
     // Hand-off event carries totals.
     expect(events.emit).toHaveBeenCalledTimes(1);
@@ -418,12 +422,14 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
       }),
     );
 
-    expect(tx.ledgerEntry.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        type: LedgerEntryType.PROFIT_FEE,
-        amount: 0n,
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining<Record<string, unknown>>({
+        data: expect.objectContaining<Record<string, unknown>>({
+          type: LedgerEntryType.PROFIT_FEE,
+          amount: 0n,
+        }),
       }),
-    });
+    );
     const [, emittedPayload] = events.emit.mock.calls[0] as [
       string,
       EventsPayloads.WithdrawalFeeAppliedEventPayload,
