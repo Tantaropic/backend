@@ -23,14 +23,14 @@ Business logic exclusively uses the `Money` Value Object (`src/common/domain/val
 - **Immutable**: All math returns new instances
 - **Currency-safe**: Cannot add EGP to USD
 - **Underflow-protected**: `subtract()` throws if result would be negative
-- **Factory methods**: `Money.fromMajorUnit(4.30, Currency.EGP)` and `Money.fromSmallestUnit(430n, Currency.EGP)`
+- **Factory methods**: `Money.fromMajorUnit(4.30, Currency.EGP)` and `Money.fromMinorUnit(430n, Currency.EGP)`
 
 ### Layer 3: Database / Prisma
 
 Values are stored as `BigInt` in the smallest currency unit (piasters for EGP). No decimals in the database. The repository layer handles wrap/unwrap:
 
 - **Save**: `money.toDatabaseValue()` → `{ amount: BigInt, currency: string }`
-- **Read**: `Money.fromSmallestUnit(row.amount, row.currency)` → `Money`
+- **Read**: `Money.fromMinorUnit(row.amount, row.currency)` → `Money`
 
 ### Rule
 
@@ -43,8 +43,8 @@ Never perform arithmetic on raw numbers or BigInts outside the `Money` VO. Use `
 Currencies are defined in the `CurrencyRegistry` (`src/common/constants/currency.registry.ts`):
 
 | Currency | Multiplier | Major Unit | Minor Unit |
-|----------|-----------|------------|------------|
-| EGP | 100 | Pound | Piaster |
+| -------- | ---------- | ---------- | ---------- |
+| EGP      | 100        | Pound      | Piaster    |
 
 To convert: `4.30 EGP × 100 = 430 piasters`
 
@@ -59,6 +59,7 @@ ASSET_UNIT_PRECISION = 100,000,000 (1e8)
 ```
 
 This means:
+
 - `1 gram of gold = 100,000,000 internal units`
 - `0.001 grams = 100,000 internal units`
 - Database field `WalletPosition.totalUnits` stores internal units as `BigInt`
@@ -69,10 +70,10 @@ Matches the original `Decimal(18, 8)` precision from the schema design phase. Pr
 
 ### Conversion Reference
 
-| Direction | Formula |
-|-----------|---------|
-| EGP → units (buy) | `units = amountInPiasters × 1e8 / priceInPiasters` |
-| Units → EGP (sell) | `proceeds = units × priceInPiasters / 1e8` |
+| Direction          | Formula                                            |
+| ------------------ | -------------------------------------------------- |
+| EGP → units (buy)  | `units = amountInPiasters × 1e8 / priceInPiasters` |
+| Units → EGP (sell) | `proceeds = units × priceInPiasters / 1e8`         |
 
 ---
 
@@ -89,14 +90,14 @@ All mock API operations that modify state use **caller-provided idempotency keys
 
 ### Which Endpoints Use Idempotency
 
-| Endpoint | Idempotent | Reason |
-|----------|-----------|--------|
-| `simulate-transaction` | No | Each call intentionally creates a new transaction |
-| `collect-funds` | Yes | Prevents double-collection of the same sweep |
-| `deposit-funds` | Yes | Prevents double-deposit during redemption |
-| `buy` | Yes | Prevents double-purchase of the same allocation |
-| `sell` | Yes | Prevents double-sale of the same redemption |
-| `set-prices` | No | Admin override, always applies |
+| Endpoint               | Idempotent | Reason                                            |
+| ---------------------- | ---------- | ------------------------------------------------- |
+| `simulate-transaction` | No         | Each call intentionally creates a new transaction |
+| `collect-funds`        | Yes        | Prevents double-collection of the same sweep      |
+| `deposit-funds`        | Yes        | Prevents double-deposit during redemption         |
+| `buy`                  | Yes        | Prevents double-purchase of the same allocation   |
+| `sell`                 | Yes        | Prevents double-sale of the same redemption       |
+| `set-prices`           | No         | Admin override, always applies                    |
 
 ### Key Format Convention
 
@@ -116,28 +117,28 @@ All platform rates use **Basis Points** (BPS), where `100 BPS = 1%`:
 
 ### Fund Fees
 
-| AUM Tier | Fee (BPS) | Fee (%) |
-|----------|----------|---------|
-| Up to 1,000 EGP | 50 | 0.5% |
-| Up to 10,000 EGP | 40 | 0.4% |
-| Up to 100,000 EGP | 30 | 0.3% |
+| AUM Tier          | Fee (BPS) | Fee (%) |
+| ----------------- | --------- | ------- |
+| Up to 1,000 EGP   | 50        | 0.5%    |
+| Up to 10,000 EGP  | 40        | 0.4%    |
+| Up to 100,000 EGP | 30        | 0.3%    |
 
 ### Profit Fees
 
-| Profit Tier | Fee (BPS) | Fee (%) |
-|------------|----------|---------|
-| Up to 10,000 EGP | 150 | 1.5% |
-| Up to 100,000 EGP | 140 | 1.4% |
-| Up to 1,000,000 EGP | 130 | 1.3% |
+| Profit Tier         | Fee (BPS) | Fee (%) |
+| ------------------- | --------- | ------- |
+| Up to 10,000 EGP    | 150       | 1.5%    |
+| Up to 100,000 EGP   | 140       | 1.4%    |
+| Up to 1,000,000 EGP | 130       | 1.3%    |
 
 ### Asset Allocation (Default Profile)
 
-| Asset Class | BPS | Percentage |
-|------------|-----|-----------|
-| Gold | 2400 | 24% |
-| Index Fund | 7500 | 75% |
-| High-Risk | 100 | 1% |
-| **Total** | **10000** | **100%** |
+| Asset Class | BPS       | Percentage |
+| ----------- | --------- | ---------- |
+| Gold        | 2400      | 24%        |
+| Index Fund  | 7500      | 75%        |
+| High-Risk   | 100       | 1%         |
+| **Total**   | **10000** | **100%**   |
 
 ---
 
