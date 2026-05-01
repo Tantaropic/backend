@@ -4,7 +4,7 @@ import type { MerchantTag } from '../interfaces/bank-provider.interface';
 
 type BaseEventPayload = {
   timestamp?: Date;
-  userId?: string;
+  userId: string;
   accountId?: string;
   transactionId: string;
 };
@@ -19,9 +19,19 @@ export type WalletWithdrawalEventPayload = WalletEventPayload;
 
 // Bank events payload.
 export type TransactionWebhookReceivedEventPayload = {
+  transactionEventId: string;
   merchantTag?: MerchantTag;
   idempotencyKey?: string;
+  occurredAt: Date;
 } & WalletEventPayload;
+
+// Round-Up events payload.
+export type RoundUpCompletedEventPayload = {
+  transactionEventId: string;
+  grossRoundUpAmount: Money;
+  merchantTag?: MerchantTag;
+  idempotencyKey: string;
+} & BaseEventPayload;
 
 // Trade events payload.
 export type TradeOrderExecutedEventPayload = {
@@ -37,3 +47,4 @@ export type AssetPriceChangedEventPayload = {
   asset: AssetClass;
   assetPrice: Money;
 } & BaseEventPayload;
+
