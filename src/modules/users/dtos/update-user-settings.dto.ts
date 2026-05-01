@@ -1,5 +1,6 @@
-import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 import { RiskProfile } from '../../../common/enums';
+import { Transform } from 'class-transformer';
 
 /**
  * DTO for updating user-specific settings.
@@ -11,7 +12,24 @@ export class UpdateUserSettingsDto {
   riskProfile?: RiskProfile;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  targetGoal?: number;
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) return undefined;
+    try {
+      return BigInt(String(value));
+    } catch {
+      return undefined;
+    }
+  })
+  targetGoal?: bigint;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) return undefined;
+    try {
+      return BigInt(String(value));
+    } catch {
+      return undefined;
+    }
+  })
+  roundUpStep?: bigint;
 }

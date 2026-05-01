@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { LedgerEntryType } from '../../common/enums';
 import { UserRepository } from './user.repository';
@@ -52,18 +57,37 @@ export class UsersService {
    * Update a user's risk profile and / or savings target goal.
    * Only fields that are explicitly provided are updated.
    */
-  async updateSettings(userId: string, settings: UpdateUserSettingsDto) {
-    const targetGoalBigInt =
-      settings.targetGoal !== undefined
-        ? BigInt(settings.targetGoal)
-        : undefined;
+  async updateSettings(
+    userId: string,
+    settings: UpdateUserSettingsDto,
+  ): Promise<User> {
+    // Validate targetGoal
+    if (settings.targetGoal !== undefined) {
+      if (typeof settings.targetGoal !== 'bigint') {
+        throw new BadRequestException('Target goal must be a valid number');
+      }
+      if (settings.targetGoal < 0n) {
+        throw new BadRequestException('Target goal must be non-negative');
+      }
+    }
+
+    // Validate roundUpStep
+    if (settings.roundUpStep !== undefined) {
+      if (typeof settings.roundUpStep !== 'bigint') {
+        throw new BadRequestException('Round-up step must be a valid number');
+      }
+      if (settings.roundUpStep <= 0n) {
+        throw new BadRequestException('Round-up step must be positive');
+      }
+    }
+
     return this.userRepo.updateSettings(
       userId,
       settings.riskProfile,
-      targetGoalBigInt,
+      settings.targetGoal,
+      settings.roundUpStep,
     );
   }
-
   /**
    * Simulates a fiat deposit into the user's shared profile wallet.
    * Creates a LedgerEntry and increments the wallet balance atomically.

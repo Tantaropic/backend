@@ -1,6 +1,7 @@
 import { IsNotEmpty, IsEnum, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { AssetClass, Currency } from '../../../common/enums';
+import { BadRequestException } from '@nestjs/common';
 
 export class BuyAssetRequestDto {
   @IsNotEmpty()
@@ -12,7 +13,9 @@ export class BuyAssetRequestDto {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new BadRequestException(
+        `Invalid amount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
   amount: bigint;

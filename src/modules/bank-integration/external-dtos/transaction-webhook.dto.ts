@@ -8,6 +8,7 @@ import {
 import { Currency } from '../../../common/enums';
 import { MerchantTag } from '../../../common/interfaces/bank-provider.interface';
 import { Transform } from 'class-transformer';
+import { BadRequestException } from '@nestjs/common';
 
 export class TransactionWebhookRequestDto {
   @IsNotEmpty()
@@ -23,7 +24,9 @@ export class TransactionWebhookRequestDto {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new BadRequestException(
+        `Invalid amount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
   amount: bigint;

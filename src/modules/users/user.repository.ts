@@ -89,10 +89,16 @@ export class UserRepository extends BaseRepository<User> {
     userId: string,
     riskProfile?: RiskProfile,
     targetGoal?: bigint,
+    roundUpStep?: bigint,
   ): Promise<User> {
-    const data: { riskProfile?: RiskProfile; targetGoal?: bigint } = {};
+    const data: {
+      riskProfile?: RiskProfile;
+      targetGoal?: bigint;
+      roundUpStep?: bigint;
+    } = {};
     if (riskProfile !== undefined) data.riskProfile = riskProfile;
     if (targetGoal !== undefined) data.targetGoal = targetGoal;
+    if (roundUpStep !== undefined) data.roundUpStep = roundUpStep;
 
     return this.prisma.user.update({ where: { id: userId }, data });
   }
