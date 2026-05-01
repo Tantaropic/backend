@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Subject } from 'rxjs';
 import { EventType, type EventsPayloads } from '../../common/events';
 import { UserRepository } from '../users/user.repository';
+import { ActiveUserRegistry } from '../../common/realtime/active-user.registry';
 import {
   type SseChannel,
   type SseEnvelope,
@@ -39,7 +40,10 @@ export class RealtimeService implements OnModuleDestroy {
   private readonly connections = new Map<string, SseConnection[]>();
   private connectionCounter = 0;
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly activeUsers: ActiveUserRegistry,
+  ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Connection Management
@@ -73,6 +77,8 @@ export class RealtimeService implements OnModuleDestroy {
     existing.push(connection);
     this.connections.set(key, existing);
 
+    if (userId) this.activeUsers.acquire(userId);
+
     this.logger.log(
       `SSE connected: ${connectionId} (user: ${userId ?? 'global'}, channels: ${channels.join(', ')})`,
     );
@@ -97,6 +103,7 @@ export class RealtimeService implements OnModuleDestroy {
         const conn = connections[index];
         clearInterval(conn.heartbeatTimer);
         conn.subject.complete();
+        if (conn.userId) this.activeUsers.release(conn.userId);
         connections.splice(index, 1);
 
         if (connections.length === 0) {
@@ -115,6 +122,7 @@ export class RealtimeService implements OnModuleDestroy {
       for (const conn of connections) {
         clearInterval(conn.heartbeatTimer);
         conn.subject.complete();
+        if (conn.userId) this.activeUsers.release(conn.userId);
       }
     }
     this.connections.clear();
@@ -265,6 +273,9 @@ export class RealtimeService implements OnModuleDestroy {
     payload: EventsPayloads.AssetPriceChangedEventPayload,
   ): void {
     const { amount, currency } = serializeMoney(payload.assetPrice);
+    const previous = payload.previousPrice
+      ? serializeMoney(payload.previousPrice).amount
+      : null;
 
     this.pushGlobal({
       channel: 'prices',
@@ -275,6 +286,39 @@ export class RealtimeService implements OnModuleDestroy {
         assetId: payload.assetId ?? null,
         price: amount,
         currency,
+        deltaBps: payload.deltaBps ?? 0,
+        previousPrice: previous,
+      },
+      ts: new Date().toISOString(),
+    });
+  }
+
+  /** Wallet value projected → `wallet` channel (per-user, on each price tick). */
+  @OnEvent(EventType.SystemEventType.WALLET_VALUE_PROJECTED)
+  handleWalletValueProjected(
+    payload: EventsPayloads.WalletValueProjectedEventPayload,
+  ): void {
+    const fiat = serializeMoney(payload.fiatBalance);
+    const total = serializeMoney(payload.totalValue);
+
+    this.pushToUser(payload.userId, {
+      channel: 'wallet',
+      type: EventType.SystemEventType.WALLET_VALUE_PROJECTED,
+      userId: payload.userId,
+      data: {
+        profileId: payload.profileId,
+        walletId: payload.walletId,
+        fiatBalance: fiat.amount,
+        totalValue: total.amount,
+        currency: total.currency,
+        deltaBps: payload.deltaBps,
+        perAsset: payload.perAsset.map((a) => ({
+          asset: a.asset,
+          units: serializeBigInt(a.units),
+          pricePerUnit: serializeMoney(a.pricePerUnit).amount,
+          value: serializeMoney(a.value).amount,
+        })),
+        projectedAt: payload.projectedAt.toISOString(),
       },
       ts: new Date().toISOString(),
     });
@@ -339,9 +383,7 @@ export class RealtimeService implements OnModuleDestroy {
         try {
           conn.subject.next(message);
         } catch (error) {
-          this.logger.warn(
-            `Failed to push to ${conn.id}: ${String(error)}`,
-          );
+          this.logger.warn(`Failed to push to ${conn.id}: ${String(error)}`);
         }
       }
     }
@@ -379,10 +421,9 @@ export class RealtimeService implements OnModuleDestroy {
       let walletData: Record<string, unknown> | null = null;
 
       if (connection.userId) {
-        const user =
-          await this.userRepository.findByIdWithProfileAndWallet(
-            connection.userId,
-          );
+        const user = await this.userRepository.findByIdWithProfileAndWallet(
+          connection.userId,
+        );
 
         if (user?.profile?.wallet) {
           const wallet = user.profile.wallet;
@@ -419,14 +460,18 @@ export class RealtimeService implements OnModuleDestroy {
   // Heartbeat
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /** Start a 15 s heartbeat to keep the connection alive through proxies. */
+  /**
+   * Start a 15 s heartbeat to keep the connection alive through proxies.
+   * Sent as a typed `ping` event so clients can `addEventListener('ping', ...)`
+   * to ignore it instead of receiving it on the default `onmessage` handler.
+   */
   private startHeartbeat(
     connectionId: string,
     subject: Subject<MessageEvent>,
   ): ReturnType<typeof setInterval> {
     return setInterval(() => {
       try {
-        subject.next({ data: ':heartbeat' } as MessageEvent);
+        subject.next({ data: '', type: 'ping' } as MessageEvent);
       } catch {
         this.logger.warn(`Heartbeat failed for ${connectionId}`);
       }

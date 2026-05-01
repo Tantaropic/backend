@@ -52,10 +52,9 @@ export class RealtimeController {
     @Query('userId', new ParseUUIDPipe()) userId: string,
     @Req() req: Request,
   ): Observable<MessageEvent> {
-    const { connectionId, subject } = this.realtimeService.subscribe(
-      userId,
-      ['wallet'],
-    );
+    const { connectionId, subject } = this.realtimeService.subscribe(userId, [
+      'wallet',
+    ]);
 
     req.on('close', () => this.realtimeService.unsubscribe(connectionId));
 
@@ -69,10 +68,9 @@ export class RealtimeController {
    */
   @Sse('prices')
   prices(@Req() req: Request): Observable<MessageEvent> {
-    const { connectionId, subject } = this.realtimeService.subscribe(
-      null,
-      ['prices'],
-    );
+    const { connectionId, subject } = this.realtimeService.subscribe(null, [
+      'prices',
+    ]);
 
     req.on('close', () => this.realtimeService.unsubscribe(connectionId));
 
