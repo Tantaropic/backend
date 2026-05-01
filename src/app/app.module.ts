@@ -11,6 +11,7 @@ import { MockExchangeModule } from '../external-api/mock-exchange/mock-exchange.
 import { HttpModule } from '../common/http/http.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BankIntegrationModule } from '../modules/bank-integration/bank-integration.module';
+import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { BankIntegrationModule } from '../modules/bank-integration/bank-integrat
     MockExchangeModule,
     HttpModule,
     BankIntegrationModule,
+    RoundUpEngineModule,
     EventEmitterModule.forRoot({
       wildcard: true,
       verboseMemoryLeak: true,
