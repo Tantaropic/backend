@@ -28,10 +28,12 @@ export function calculateRoundUp(
   ).toMinorUnit();
 
   const remainder = totalMoney.mod(stepMoney);
+  const targetRoundUp = stepMoney.subtract(remainder);
 
-  if (remainder.isZero()) {
-    return stepMoney;
-  }
+  console.log('totalMoney: ', totalMoney);
+  console.log('roundUPStep: ', roundUpStep);
+  console.log('Remainder: ', remainder);
+  console.log('Step money: ', stepMoney);
 
-  return remainder;
+  return targetRoundUp;
 }
