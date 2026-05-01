@@ -1,11 +1,4 @@
-import { CurrencyRegistry } from '../../common/constants/currency.registry';
-import { Currency } from '../../common/enums';
-
-/**
- * The round-up step in major currency units.
- * All transactions are rounded up to the next multiple of this value.
- */
-const ROUND_UP_STEP = 5n;
+import { Money } from '../../common/domain/value-objects/money.vo';
 
 /**
  * Calculates the round-up amount to the next multiple of 5 major units.
@@ -26,17 +19,19 @@ const ROUND_UP_STEP = 5n;
  * @returns Round-up amount in smallest currency unit (bigint). Always > 0.
  */
 export function calculateRoundUp(
-  amountInSmallest: bigint,
-  currency: Currency,
-): bigint {
-  const multiplier = CurrencyRegistry[currency].multiplier;
-  const stepInSmallest = ROUND_UP_STEP * multiplier;
+  totalMoney: Money,
+  roundUpStep: bigint,
+): Money {
+  const stepMoney = Money.fromMajorUnit(
+    roundUpStep,
+    totalMoney.currency,
+  ).toMinorUnit();
 
-  const remainder = amountInSmallest % stepInSmallest;
+  const remainder = totalMoney.mod(stepMoney);
 
-  // If exact multiple of 5 → still collect a full step
-  if (remainder === 0n) return stepInSmallest;
+  if (remainder.isZero()) {
+    return stepMoney;
+  }
 
-  return stepInSmallest - remainder;
+  return remainder;
 }
-

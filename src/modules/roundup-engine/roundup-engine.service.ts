@@ -5,14 +5,11 @@ import {
   I_BANK_PROVIDER,
   type IBankProvider,
 } from '../../common/interfaces/bank-provider.interface';
-import { Money } from '../../common/domain/value-objects/money.vo';
 import { LedgerEntryType } from '../../common/enums';
-import {
-  EventType,
-  EventsPayloads,
-} from '../../common/events';
+import { EventType, EventsPayloads } from '../../common/events';
 import { TransactionEventRepository } from '../transaction/transaction-event.repository';
 import { LedgerRepository } from '../ledger/ledger.repository';
+import { UserRepository } from '../users/user.repository';
 import { calculateRoundUp } from './roundup.calculator';
 
 /**
@@ -34,6 +31,7 @@ export class RoundUpEngineService {
     private readonly bankProvider: IBankProvider,
     private readonly transactionEventRepo: TransactionEventRepository,
     private readonly ledgerRepo: LedgerRepository,
+    private readonly userRepository: UserRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -62,13 +60,20 @@ export class RoundUpEngineService {
 
     this.logger.log(`Processing round-up for txn ${transactionId}`);
 
+    const user = await this.userRepository.getUser(userId);
+    if (!user) {
+      this.logger.error(`User ${userId} not found`);
+      return;
+    }
+
+    const roundUpStep = user.roundUpStep;
+
     // ─── 1. Calculate round-up ───
-    const roundUpAmount = calculateRoundUp(money.amount, money.currency);
-    const roundUpMoney = Money.fromSmallestUnit(roundUpAmount, money.currency);
+    const roundUpMoney = calculateRoundUp(money, roundUpStep);
     const debitIdempotencyKey = `roundup-${idempotencyKey ?? transactionId}`;
 
     this.logger.log(
-      `Round-up calculated: ${roundUpAmount} piasters for txn ${transactionId}`,
+      `Round-up calculated: ${roundUpMoney.amount} piasters for txn ${transactionId}`,
     );
 
     // ─── 2. Collect funds from user's bank ───
@@ -104,7 +109,7 @@ export class RoundUpEngineService {
     // ─── 4. Mark TransactionEvent as processed ───
     await this.transactionEventRepo.markProcessed(
       transactionEventId,
-      roundUpAmount,
+      roundUpMoney.toMinorUnit().amount,
     );
 
     // ─── 5. Emit for Fee Engine ───
@@ -124,7 +129,7 @@ export class RoundUpEngineService {
     );
 
     this.logger.log(
-      `Round-up complete: ${roundUpAmount} piasters collected for txn ${transactionId}`,
+      `Round-up complete: ${roundUpMoney.toMinorUnit().amount} piasters collected for txn ${transactionId}`,
     );
   }
 }
