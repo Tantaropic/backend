@@ -85,7 +85,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
         executionPrice:
           response.executionPrice !== undefined &&
           request.totalCost.currency !== undefined
-            ? Money.fromSmallestUnit(
+            ? Money.fromMinorUnit(
                 response.executionPrice,
                 request.totalCost.currency,
               )
@@ -93,7 +93,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
         totalCost:
           response.totalAmount !== undefined &&
           request.totalCost.currency !== undefined
-            ? Money.fromSmallestUnit(
+            ? Money.fromMinorUnit(
                 response.totalAmount,
                 request.totalCost.currency,
               )
@@ -135,7 +135,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
         executionPrice:
           response.executionPrice !== undefined &&
           request.totalCost.currency !== undefined
-            ? Money.fromSmallestUnit(
+            ? Money.fromMinorUnit(
                 response.executionPrice,
                 request.totalCost.currency,
               )
@@ -143,7 +143,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
         totalCost:
           response.totalAmount !== undefined &&
           request.totalCost.currency !== undefined
-            ? Money.fromSmallestUnit(
+            ? Money.fromMinorUnit(
                 response.totalAmount,
                 request.totalCost.currency,
               )
@@ -176,7 +176,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
       }
 
       // Map primitive back to Money VO
-      return Money.fromSmallestUnit(priceData.pricePerUnit, priceData.currency);
+      return Money.fromMinorUnit(priceData.pricePerUnit, priceData.currency);
     } catch (error) {
       this.logger.error(`Failed to fetch price for ${assetClass}`);
       throw error;

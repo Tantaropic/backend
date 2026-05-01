@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma/prisma.service';
+import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly userRepository: UserRepository,
+  ) {}
 
   /**
    * Creates a test user with an associated profile and empty wallet.
@@ -15,13 +19,10 @@ export class UsersService {
       data: { name: 'Test Profile' },
     });
 
-    return this.prisma.user.create({
-      data: {
-        email: `test-${Date.now()}@example.com`,
-        name: 'Test User',
-        profileId: profile.id,
-      },
-      include: { profile: true },
+    return this.userRepository.create({
+      email: `test-${Date.now()}@example.com`,
+      name: 'Test User',
+      profile: { connect: { id: profile.id } },
     });
   }
 
@@ -30,8 +31,13 @@ export class UsersService {
    * @returns Array of user records.
    */
   async findAll() {
-    return this.prisma.user.findMany({
-      include: { profile: true },
-    });
+    return this.userRepository.findAll();
+  }
+
+  /**
+   * Finds a user by ID.
+   */
+  async findOne(id: string) {
+    return this.userRepository.findById(id);
   }
 }
