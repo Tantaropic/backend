@@ -45,11 +45,11 @@ export class FeeCalculatorService {
       throw new Error('Sale units must be non-negative');
     }
     const currency: Currency = sale.executionPrice.currency;
-    const proceeds = Money.fromSmallestUnit(
+    const proceeds = Money.fromMinorUnit(
       sale.units * sale.executionPrice.amount,
       currency,
     );
-    const costOfSold = Money.fromSmallestUnit(
+    const costOfSold = Money.fromMinorUnit(
       sale.units * sale.averageBuyPrice,
       currency,
     );
@@ -58,7 +58,7 @@ export class FeeCalculatorService {
       proceeds.amount > costOfSold.amount
         ? proceeds.amount - costOfSold.amount
         : 0n;
-    const realizedProfit = Money.fromSmallestUnit(profitAmount, currency);
+    const realizedProfit = Money.fromMinorUnit(profitAmount, currency);
 
     return { proceeds, costOfSold, realizedProfit };
   }

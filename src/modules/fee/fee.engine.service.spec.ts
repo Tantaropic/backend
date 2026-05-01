@@ -64,7 +64,7 @@ const buildPayload = (
   walletId: 'wallet-1',
   transactionEventId: 'txev-1',
   transactionId: 'tx-1',
-  grossAmount: Money.fromSmallestUnit(1000n, Currency.EGP),
+  grossAmount: Money.fromMinorUnit(1000n, Currency.EGP),
   idempotencyKey: 'rd-key-1',
   ...o,
 });
@@ -311,12 +311,12 @@ const buildWithdrawalPayload = (
     {
       assetClass: AssetClass.GOLD,
       units: 10n,
-      executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+      executionPrice: Money.fromMinorUnit(200n, Currency.EGP),
     },
     {
       assetClass: AssetClass.INDEX_FUND,
       units: 20n,
-      executionPrice: Money.fromSmallestUnit(120n, Currency.EGP),
+      executionPrice: Money.fromMinorUnit(120n, Currency.EGP),
     },
   ],
   ...o,
@@ -416,7 +416,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
           {
             assetClass: AssetClass.GOLD,
             units: 10n,
-            executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+            executionPrice: Money.fromMinorUnit(200n, Currency.EGP),
           },
         ],
       }),
@@ -491,7 +491,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
             {
               assetClass: AssetClass.GOLD,
               units: 10n,
-              executionPrice: Money.fromSmallestUnit(200n, Currency.EGP),
+              executionPrice: Money.fromMinorUnit(200n, Currency.EGP),
             },
           ],
         }),

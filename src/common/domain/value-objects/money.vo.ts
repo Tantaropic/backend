@@ -234,8 +234,8 @@ export class Money {
       throw new Error('Divisor cannot be zero');
     const d = typeof divisor === 'number' ? BigInt(divisor) : divisor;
     return {
-      quotient: new Money(this.amount / d, this.currency),
-      remainder: new Money(this.amount % d, this.currency),
+      quotient: new Money(this.amount / d, this.currency, MoneyUnit.MINOR),
+      remainder: new Money(this.amount % d, this.currency, MoneyUnit.MINOR),
     };
   }
 
@@ -265,7 +265,13 @@ export class Money {
     if (!Number.isInteger(bps) || bps < 0) {
       throw new Error('BPS must be a non-negative integer');
     }
-    return new Money((this.amount * BigInt(bps)) / 10_000n, this.currency);
+    return new Money(
+      (this.amount * BigInt(bps)) / 10_000n,
+      this.currency,
+      MoneyUnit.MINOR,
+    );
+  }
+
   /** Debug-friendly string. e.g. "5000 Piasters (EGP)" or "50 Pounds (EGP)". */
   public toString(): string {
     const config: CurrencyConfig = Money.getConfig(this.currency);

@@ -151,10 +151,10 @@ export class FeeEngineService {
     );
 
     // Per-sale: realized profit + tiered fee. Aggregate totals.
-    let proceedsTotal = Money.fromSmallestUnit(0n, currency);
-    let costOfSoldTotal = Money.fromSmallestUnit(0n, currency);
-    let realizedProfitTotal = Money.fromSmallestUnit(0n, currency);
-    let profitFeeTotal = Money.fromSmallestUnit(0n, currency);
+    let proceedsTotal = Money.fromMinorUnit(0n, currency);
+    let costOfSoldTotal = Money.fromMinorUnit(0n, currency);
+    let realizedProfitTotal = Money.fromMinorUnit(0n, currency);
+    let profitFeeTotal = Money.fromMinorUnit(0n, currency);
 
     for (const sale of sales) {
       const position = positionByAsset.get(sale.assetClass);
