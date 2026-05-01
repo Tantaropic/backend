@@ -21,10 +21,15 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
    * Saves a new ledger entry.
    * This method "unwraps" the Money VO into amount (BigInt) and currency (string) for Prisma persistence.
    */
-  async saveEntry(data: LedgerEntryDto, money: Money): Promise<LedgerEntry> {
+  async saveEntry(
+    data: LedgerEntryDto,
+    money: Money,
+    tx?: any,
+  ): Promise<LedgerEntry> {
     const { amount, currency } = money;
+    const client = tx || this.prisma;
 
-    return await this.db.create({
+    return await client.ledgerEntry.create({
       data: {
         ...data,
         amount,
@@ -39,7 +44,7 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
    * All financial math happens inside the Money VO, never using raw numbers in the repository.
    */
   async getBalance(userId: string): Promise<Money> {
-    const entries = await this.db.findMany({
+    const entries = await this.prisma.ledgerEntry.findMany({
       where: { userId },
     });
 

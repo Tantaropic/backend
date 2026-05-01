@@ -39,6 +39,10 @@ export class TransactionWebhookRequestDto {
   @IsNotEmpty()
   @IsString()
   merchantTag: MerchantTag;
+
+  @IsNotEmpty()
+  @IsString()
+  idempotencyKey: string;
 }
 
 export class TransactionWebhookResponseDto {

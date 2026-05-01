@@ -21,7 +21,7 @@ export type WalletWithdrawalEventPayload = WalletEventPayload;
 export type TransactionWebhookReceivedEventPayload = {
   transactionEventId: string;
   merchantTag?: MerchantTag;
-  idempotencyKey?: string;
+  idempotencyKey: string;
   occurredAt: Date;
 } & WalletEventPayload;
 

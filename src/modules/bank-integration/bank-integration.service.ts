@@ -10,7 +10,10 @@ import {
   type ISimulateTransactionResponseDto,
 } from '../../common/interfaces/bank-provider.interface';
 import { HttpClientService } from '../../common/http';
-import { StringifiedJSON, serialize } from '../../common/helpers/json-helper';
+import {
+  replaceBigInts,
+  ReplaceBigInts,
+} from '../../common/helpers/json-helper';
 import {
   DebitRequestDto,
   DebitResponseDto,
@@ -75,11 +78,11 @@ export class BankIntegrationService implements IBankProvider {
     };
 
     const payloadStringified =
-      serialize<SimulateTransactionRequestDto>(externalPayload);
+      replaceBigInts<SimulateTransactionRequestDto>(externalPayload);
 
     try {
       const response = await this.http.post<
-        StringifiedJSON<SimulateTransactionRequestDto>,
+        ReplaceBigInts<SimulateTransactionRequestDto>,
         SimulateTransactionResponseDto
       >(this.bankSimulateTransactionUrl, payloadStringified);
 
@@ -121,6 +124,7 @@ export class BankIntegrationService implements IBankProvider {
       currency: payload.currency,
       occurredAt: new Date(payload.occurredAt),
       rawPayload: payload,
+      idempotencyKey: payload.transactionId,
     });
 
     // Emit domain event for downstream engines (Round-Up, etc.)
@@ -132,6 +136,7 @@ export class BankIntegrationService implements IBankProvider {
         transactionEventId: txEvent.id,
         money,
         merchantTag: payload.merchantTag,
+        idempotencyKey: txEvent.id,
         occurredAt: new Date(payload.occurredAt),
       };
 
@@ -152,19 +157,21 @@ export class BankIntegrationService implements IBankProvider {
   async debit(payload: IFundTransferRequest): Promise<IFundTransferResult> {
     this.logger.log(`Initiating external DEBIT for user ${payload.userId}`);
 
+    const { currency, amount } = payload.money.toPrimitives();
     const externalPayload: DebitRequestDto = {
       userId: payload.userId,
-      ...payload.money.toPrimitives(),
+      currency,
+      amount,
       idempotencyKey: payload.idempotencyKey,
       metadata: payload.metadata,
     };
 
-    const payloadStringified = serialize<DebitRequestDto>(externalPayload);
+    const payloadStringified = replaceBigInts<DebitRequestDto>(externalPayload);
 
     try {
       // Execute external HTTP call via the ACL boundary
       const response = await this.http.post<
-        StringifiedJSON<DebitRequestDto>,
+        ReplaceBigInts<DebitRequestDto>,
         DebitResponseDto
       >(this.bankDebitUrl, payloadStringified);
 
@@ -189,12 +196,13 @@ export class BankIntegrationService implements IBankProvider {
       metadata: payload.metadata,
     };
 
-    const payloadStringified = serialize<DepositRequestDto>(externalPayload);
+    const payloadStringified =
+      replaceBigInts<DepositRequestDto>(externalPayload);
 
     try {
       // Execute external HTTP call via the ACL boundary
       const response = await this.http.post<
-        StringifiedJSON<DepositRequestDto>,
+        ReplaceBigInts<DepositRequestDto>,
         DepositResponseDto
       >(this.bankDepositUrl, payloadStringified);
 

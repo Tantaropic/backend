@@ -76,6 +76,7 @@ export interface ISimulateTransactionResponseDto {
  */
 export interface ITransactionWebhookRequestDto {
   userId: string;
+  idempotencyKey: string;
   transactionId: string;
   money: Money;
   occurredAt: string;

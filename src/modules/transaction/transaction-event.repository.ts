@@ -12,6 +12,7 @@ export interface SaveTransactionEventData {
   currency: Currency;
   occurredAt: Date;
   rawPayload?: any;
+  idempotencyKey: string;
 }
 
 /**
@@ -31,7 +32,7 @@ export class TransactionEventRepository extends BaseRepository<TransactionEvent>
   async saveFromWebhook(
     data: SaveTransactionEventData,
   ): Promise<TransactionEvent> {
-    return this.db.create({
+    return this.prisma.transactionEvent.create({
       data: {
         userId: data.userId,
         transactionId: data.transactionId,
@@ -52,7 +53,7 @@ export class TransactionEventRepository extends BaseRepository<TransactionEvent>
   async findByTransactionId(
     transactionId: string,
   ): Promise<TransactionEvent | null> {
-    return this.db.findUnique({
+    return this.prisma.transactionEvent.findUnique({
       where: { transactionId },
     });
   }
@@ -65,7 +66,7 @@ export class TransactionEventRepository extends BaseRepository<TransactionEvent>
     id: string,
     roundUpAmount: bigint,
   ): Promise<TransactionEvent> {
-    return this.db.update({
+    return await this.prisma.transactionEvent.update({
       where: { id },
       data: {
         roundUpAmount,

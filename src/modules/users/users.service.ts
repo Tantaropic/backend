@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { LedgerEntryType } from '../../common/enums';
 import { UserRepository } from './user.repository';
@@ -9,6 +9,7 @@ import type { User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
     private readonly userRepo: UserRepository,
     private readonly prisma: PrismaService,
@@ -71,6 +72,7 @@ export class UsersService {
    * to prevent double-credit in concurrent scenarios.
    */
   async simulateDeposit(userId: string, amount: bigint) {
+    this.logger.log(`Simulating deposit of ${amount} for user ${userId}`);
     const user = await this.userRepo.findByIdWithProfileAndWallet(userId);
 
     if (!user || !user.profile.wallet) {
