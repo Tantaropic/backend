@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../database/prisma/prisma.module';
 import { UsersModule } from '../modules/users/users.module';
+import { ProfilesModule } from '../modules/profiles/profiles.module';
+import { WalletModule } from '../modules/wallet/wallet.module';
 import { MockBankModule } from '../external-api/mock-bank/mock-bank.module';
 import { ExchangeIntegrationModule } from '../modules/exchange-integration/exchange-integration.module';
 import { MockExchangeModule } from '../external-api/mock-exchange/mock-exchange.module';
@@ -15,6 +17,8 @@ import { BankIntegrationModule } from '../modules/bank-integration/bank-integrat
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     UsersModule,
+    ProfilesModule,
+    WalletModule,
     MockBankModule,
     ExchangeIntegrationModule,
     MockExchangeModule,
