@@ -11,7 +11,7 @@ export interface SaveTransactionEventData {
   amount: bigint;
   currency: Currency;
   occurredAt: Date;
-  rawPayload?: Prisma.InputJsonValue;
+  rawPayload?: object;
   idempotencyKey: string;
 }
 
@@ -41,7 +41,7 @@ export class TransactionEventRepository extends BaseRepository<TransactionEvent>
         amount: data.amount,
         currency: data.currency,
         occurredAt: data.occurredAt,
-        rawPayload: data.rawPayload ?? undefined,
+        rawPayload: (data.rawPayload ?? undefined) as Prisma.InputJsonValue,
       },
     });
   }
