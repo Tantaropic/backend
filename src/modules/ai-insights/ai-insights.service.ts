@@ -41,7 +41,7 @@ export class AiInsightsService {
 
     try {
       const recentCount = await this.getRecentTagCount(userId, merchantTag);
-      const amountDisplay = money.toMajorUnit();
+      const amountDisplay = Number(money.toMajorUnit().amount);
 
       const message = await this.generateSpendingNudge(
         merchantTag,
@@ -82,7 +82,7 @@ export class AiInsightsService {
     const { userId, transactionId, money } = payload;
     if (!userId) return;
 
-    const currentBalance = money.toMajorUnit();
+    const currentBalance = Number(money.toMajorUnit().amount);
 
     // Find the highest milestone the user just crossed (iterate from largest)
     let crossedMilestone: number | undefined;

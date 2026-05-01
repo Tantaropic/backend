@@ -240,17 +240,6 @@ export class Money {
   }
 
   /**
-   * Converts the smallest-unit amount back to the major unit as a number.
-   * E.g. 430 piasters → 4.30 EGP.
-   */
-  public toMajorUnit(): number {
-    const registry = CurrencyRegistry[this.currency];
-    const multiplier = Number(registry.multiplier);
-    const decimals = Math.log10(multiplier);
-    return Number((Number(this.amount) / multiplier).toFixed(decimals));
-  }
-
-  /**
    * Unwraps the Money object into flat primitives for external API calls, DTOs, or database persistence.
    * Unwraps the Money object into flat primitives for DB persistence, DTOs, or external APIs.
    * Always yields the **minor-unit** amount to guarantee correct storage.
