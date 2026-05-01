@@ -171,22 +171,22 @@ export class AiInsightsService {
     amountSpent: number,
     recentCount: number,
   ): Promise<string> {
-    const systemPrompt = `You are a friendly financial wellness advisor for Tantaropic, a Sharia-compliant micro-investment app.
-Your job is to gently encourage users to invest instead of overspending.
-Keep messages short (2-3 sentences max), warm, and motivational.
-Never be judgmental or preachy. Focus on the opportunity cost — what that money could become if invested.
-Use simple language. Do not use emojis.`;
+    const systemPrompt = `انت مستشار مالي ودود لتطبيق Tantaropic، تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
+مهمتك إنك تشجع المستخدمين بلطف إنهم يستثمروا بدل ما يصرفوا زيادة.
+اكتب بالعامية المصرية بأسلوب دافي ومحفز، وخلي الرسالة قصيرة (جملتين أو تلاتة بالكتير).
+متبقاش حكم على حد ولا تبقى رسمي زيادة. ركز على إن الفلوس دي ممكن تتحول لإيه لو اتستثمرت.
+استخدم كلام بسيط ومتحطش أي إيموجي.`;
 
-    const userPrompt = `The user just spent ${String(amountSpent)} EGP at a "${merchantTag.replace(/_/g, ' ')}" merchant.
-They have made ${String(recentCount)} similar purchases in the last 30 days.
-Generate a brief, encouraging nudge about what this spending could become if invested instead.`;
+    const userPrompt = `المستخدم لسه صرف ${String(amountSpent)} جنيه عند تاجر من نوع "${merchantTag.replace(/_/g, ' ')}".
+وعمل ${String(recentCount)} عملية شرا مشابهة في آخر 30 يوم.
+اكتبله رسالة قصيرة بالعامية المصرية تشجعه وتفكره إن الفلوس دي كان ممكن تبقى إيه لو استثمرها.`;
 
     return this.llm.complete({
       systemPrompt,
       userPrompt,
       // 2–3 sentences ≈ ~80 tokens; 150 leaves ~1.5× headroom.
       maxTokens: 150,
-      fallback: 'Keep investing, every piaster counts!',
+      fallback: 'كمل استثمار، كل قرش بيفرق!',
     });
   }
 
@@ -194,21 +194,20 @@ Generate a brief, encouraging nudge about what this spending could become if inv
     milestone: number,
     currentBalance: number,
   ): Promise<string> {
-    const systemPrompt = `You are a friendly financial wellness advisor for Tantaropic, a Sharia-compliant micro-investment app.
-Your job is to celebrate the user's investment milestones.
-Keep messages short (2-3 sentences max), warm, and celebratory.
-Acknowledge their discipline and encourage them to keep going.
-Use simple language. Do not use emojis.`;
+    const systemPrompt = `انت مستشار مالي ودود لتطبيق Tantaropic، تطبيق استثمار صغير متوافق مع الشريعة الإسلامية.
+مهمتك إنك تحتفل مع المستخدم لما يوصل لإنجاز جديد في محفظته.
+اكتب بالعامية المصرية بأسلوب دافي وفرحان، وخلي الرسالة قصيرة (جملتين أو تلاتة بالكتير).
+اعترف بالتزامه وشجعه إنه يكمل. استخدم كلام بسيط ومتحطش أي إيموجي.`;
 
-    const userPrompt = `The user's portfolio just crossed ${String(milestone)} EGP! Their current balance is ${String(currentBalance)} EGP.
-Generate a brief, celebratory message acknowledging this milestone.`;
+    const userPrompt = `محفظة المستخدم لسه عدت حاجز ${String(milestone)} جنيه! الرصيد الحالي ${String(currentBalance)} جنيه.
+اكتبله رسالة قصيرة بالعامية المصرية تهنيه على الإنجاز ده.`;
 
     return this.llm.complete({
       systemPrompt,
       userPrompt,
       // 2–3 sentences ≈ ~80 tokens; 150 leaves ~1.5× headroom.
       maxTokens: 150,
-      fallback: `Congratulations! Your portfolio just crossed ${String(milestone)} EGP!`,
+      fallback: `مبروك! محفظتك عدت ${String(milestone)} جنيه!`,
     });
   }
 
