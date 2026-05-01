@@ -27,7 +27,7 @@ export class MockBankController {
   ) {
     const transactionDto = this.bankService.fakeTransactionIfEmpty(dto);
     const response = await this.bankService.simulateTransaction(transactionDto);
-    return JsonHelper.serialize<SimulateTransactionResponseDto>(response);
+    return JsonHelper.replaceBigInts<SimulateTransactionResponseDto>(response);
   }
 
   /**
@@ -38,7 +38,7 @@ export class MockBankController {
   @Post('debits')
   debit(@Body() dto: FundTransferRequestDto) {
     const response = this.bankService.debit(dto);
-    return JsonHelper.serialize<FundTransferResponseDto>(response);
+    return JsonHelper.replaceBigInts<FundTransferResponseDto>(response);
   }
 
   /**
@@ -49,6 +49,6 @@ export class MockBankController {
   @Post('deposits')
   deposit(@Body() dto: FundTransferRequestDto) {
     const response = this.bankService.deposit(dto);
-    return JsonHelper.serialize<FundTransferResponseDto>(response);
+    return JsonHelper.replaceBigInts<FundTransferResponseDto>(response);
   }
 }

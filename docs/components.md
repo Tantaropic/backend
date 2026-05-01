@@ -5,6 +5,7 @@ These are the active workers and controllers in the NestJS/Node backend that exe
 ## Product Areas
 
 - User profile
+- Profiles (Aggregate Root / Tenant Management)
 - Dashboard
 - Our investments fund/wallet
 

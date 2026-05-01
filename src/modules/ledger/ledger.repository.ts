@@ -50,10 +50,11 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
         const entryMoney = Money.fromMinorUnit(entry.amount, entry.currency);
 
         // Determine if the entry is a credit (addition) or debit (subtraction)
+        // Credit-side entries increase the balance; everything else is a debit.
         const isCredit = (
           [
-            LedgerEntryType.ROUNDUP,
             LedgerEntryType.USER_DEPOSIT,
+            LedgerEntryType.ROUNDUP,
           ] as LedgerEntryType[]
         ).includes(entry.type);
 

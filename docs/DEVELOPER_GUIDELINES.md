@@ -76,3 +76,23 @@ When a user deposits funds (e.g., via a bank webhook), the following steps must 
 3. **Digital Wallet Update (The State):** Update the user's `DigitalWallet.fiatBalance` by adding the *net* amount (Gross - Fee). This step must utilize **Optimistic Concurrency Control (OCC)** via the `version` field.
 
 This separation ensures that a user's current wallet balance can always be recalculated and verified by summing their historical ledger entries.
+
+## 10. Profile as Aggregate Root
+
+The `Profile` entity serves as the **Aggregate Root** for a tenant workspace (e.g., a family unit). 
+- A `Profile` owns a single `DigitalWallet`.
+- A `Profile` can have multiple `User` members.
+- Initialization of these entities must be **atomic**.
+
+## 11. Atomic Bootstrapping
+
+When creating a new "Family" or "Profile", we must ensure that the `Profile`, its shared `DigitalWallet`, and the initial `User` are created within a single transaction.
+
+- **Service Layer**: `ProfilesService` orchestrates the creation.
+- **Repository Layer**: `ProfileRepository.createProfileWithWalletAndUser` implements the nested Prisma transaction.
+- **Logic**: 
+  1. Create `Profile` and `DigitalWallet`.
+  2. Create `User` linked to the new `Profile`.
+  3. Return the fully initialized aggregate.
+
+This prevents "half-baked" state where a user exists without a wallet or a profile exists without a user.
