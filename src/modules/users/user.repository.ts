@@ -15,6 +15,13 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   /**
+   * Retrieve a user by ID (simplified version without profile).
+   */
+  async getUser(userId: string): Promise<User | null> {
+    return this.findById(userId);
+  }
+
+  /**
    * Find a user by ID and include their full profile → wallet → positions tree.
    */
   async findByIdWithProfileAndWallet(userId: string) {
