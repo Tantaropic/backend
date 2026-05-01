@@ -125,7 +125,9 @@ describe('FeeEngineService - onRoundupDebited (FUND_FEE)', () => {
       string,
       EventsPayloads.FundsReadyForInvestmentEventPayload,
     ];
-    expect(eventName).toBe(EventType.SystemEventType.FUNDS_READY_FOR_INVESTMENT);
+    expect(eventName).toBe(
+      EventType.SystemEventType.FUNDS_READY_FOR_INVESTMENT,
+    );
     expect(emittedPayload.netAmount.amount).toBe(995n);
     expect(emittedPayload.idempotencyKey).toBe('rd-key-1');
   });
@@ -168,7 +170,9 @@ describe('FeeEngineService - onRoundupDebited (FUND_FEE)', () => {
       events as unknown as EventEmitter2,
     );
 
-    await expect(service.onRoundupDebited(buildPayload())).resolves.toBeUndefined();
+    await expect(
+      service.onRoundupDebited(buildPayload()),
+    ).resolves.toBeUndefined();
     expect(events.emit).toHaveBeenCalledTimes(1);
   });
 
@@ -378,9 +382,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
       string,
       EventsPayloads.WithdrawalFeeAppliedEventPayload,
     ];
-    expect(eventName).toBe(
-      EventType.SystemEventType.WITHDRAWAL_FEE_APPLIED,
-    );
+    expect(eventName).toBe(EventType.SystemEventType.WITHDRAWAL_FEE_APPLIED);
     expect(emittedPayload.realizedProfit.amount).toBe(900n);
     expect(emittedPayload.profitFee.amount).toBe(13n);
     expect(emittedPayload.netToUser.amount).toBe(4387n);

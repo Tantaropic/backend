@@ -159,9 +159,7 @@ export class FeeEngineService {
     for (const sale of sales) {
       const position = positionByAsset.get(sale.assetClass);
       if (!position) {
-        throw new Error(
-          `Missing wallet position for asset ${sale.assetClass}`,
-        );
+        throw new Error(`Missing wallet position for asset ${sale.assetClass}`);
       }
       if (position.totalUnits < sale.units) {
         throw new Error(

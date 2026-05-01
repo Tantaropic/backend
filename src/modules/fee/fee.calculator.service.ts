@@ -5,31 +5,12 @@ import {
   getProfitFeeBps,
 } from '../../common/constants/fee-registry';
 import { Currency } from '../../common/enums';
-
-export interface FundFeeBreakdown {
-  bps: number;
-  fee: Money;
-  net: Money;
-}
-
-export interface SaleInput {
-  units: bigint;
-  /** Per-unit market price at execution time (smallest unit). */
-  executionPrice: Money;
-  /** Per-unit weighted-average buy price from WalletPosition (smallest unit). */
-  averageBuyPrice: bigint;
-}
-
-export interface SaleProfitBreakdown {
-  proceeds: Money;
-  costOfSold: Money;
-  realizedProfit: Money;
-}
-
-export interface ProfitFeeBreakdown {
-  bps: number;
-  fee: Money;
-}
+import { FundFeeBreakdown } from './dtos/fund-fee.dto';
+import {
+  ProfitFeeBreakdown,
+  SaleInput,
+  SaleProfitBreakdown,
+} from './dtos/profit-fee.dto';
 
 @Injectable()
 export class FeeCalculatorService {
