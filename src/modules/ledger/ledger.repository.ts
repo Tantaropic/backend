@@ -52,8 +52,8 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
         // Determine if the entry is a credit (addition) or debit (subtraction)
         const isCredit = (
           [
-            LedgerEntryType.SWEEP,
-            LedgerEntryType.INBOUND_TRANSFER,
+            LedgerEntryType.ROUNDUP,
+            LedgerEntryType.USER_DEPOSIT,
           ] as LedgerEntryType[]
         ).includes(entry.type);
 

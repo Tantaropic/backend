@@ -4,9 +4,10 @@ import { HttpModule } from '../../common/http/http.module';
 import { BankIntegrationService } from './bank-integration.service';
 import { I_BANK_PROVIDER } from '../../common/interfaces/bank-provider.interface';
 import { BankIntegrationController } from './bank-integration.controller';
+import { TransactionModule } from '../transaction/transaction.module';
 
 @Module({
-  imports: [ConfigModule, HttpModule],
+  imports: [ConfigModule, HttpModule, TransactionModule],
   controllers: [BankIntegrationController],
   providers: [
     BankIntegrationService,
