@@ -1,0 +1,575 @@
+{
+  "info": {
+    "_postman_id": "df6041f9-5e87-43b3-929b-7325c4e2018b",
+    "name": "Fakka",
+    "description": "Collection for testing Tantaropic backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47110543"
+  },
+  "item": [
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Returns a list of all users registered in the system. Each user object includes their basic info and linked profile metadata. Useful for administrative overviews.\\\\n\\\\n### Response Body:\\\\nAn array of User objects:\\\\n- **id** (UUID): Unique user identifier.\\\\n- **email** (string): User's email address.\\\\n- **name** (string): User's full name.\\\\n- **riskProfile** (Enum): User's investment risk tolerance (LOW, MEDIUM, HIGH).\\\\n- **profile** (Object): The linked family profile information."
+          },
+          "response": []
+        },
+        {
+          "name": "Get One User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Retrieves detailed information for a specific user, including their profile, wallet balance, and asset positions.\\n\\n### URL Parameters:\\n- **id** (UUID): The unique identifier of the user.\\n\\n### Response Body:\\n- **id** (UUID): User identifier.\\n- **email** (string): User email.\\n- **name** (string): User name.\\n- **riskProfile** (Enum): LOW, MEDIUM, or HIGH.\\n- **profile** (Object): Linked profile details.\\n- **profile.wallet** (Object): Shared digital wallet for the profile.\\n- **profile.wallet.fiatBalance** (BigInt/String): Current cash balance in smallest unit.\\n- **profile.wallet.positions** (Array): List of held assets (GOLD, CRYPTO, etc.)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetGoal\": 100000,\n  \"roundUpStep\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "settings"
+              ]
+            },
+            "description": "Updates the user's investment preferences or savings goals.\\n\\n### Request Body (UpdateUserSettingsDto):\\n- **riskProfile** (Enum, optional): One of `LOW`, `MEDIUM`, `HIGH`. Affects automated asset allocation strategy.\\n- **targetGoal** (number/bigint, optional): The target savings amount. Passed as a number or numeric string; converted to BigInt internally.\\n- **roundUpStep** (number/bigint, optional): The rounding increment for purchases (e.g., set to 1000 for 10.00 EGP rounding). Must be positive.\\n\\n### Response Body:\\n- Returns the updated User object with the new settings applied."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Create User for Profile (Simulates if empty)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"John Doe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/{{profileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "profile",
+                "{{profileId}}"
+              ]
+            },
+            "description": "Creates a new user and links them to an existing profile. \\n\\n### Simulation Behavior:\\nIf the request body is **empty** (`{}`), the system automatically generates a fake user (random email, name, and MEDIUM risk profile). This is ideal for quickly populating a profile with members during development.\\n\\n### Request Body (CreateUserForProfileDto):\\n- **email** (string, required): User's email address.\\n- **name** (string, required): User's full name.\\n- **riskProfile** (Enum, optional): `LOW`, `MEDIUM`, or `HIGH`. Default is `MEDIUM`.\\n\\n### Response Body (CreateUserForProfileResponseDto):\\n- **id** (UUID): The newly created user's ID.\\n- **email** (string): The registered email.\\n- **name** (string): The registered name.\\n- **profileId** (UUID): The profile ID the user was linked to.\\n- **riskProfile** (Enum): The assigned risk profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Random Profile (Full Simulation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"The Smith Family\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/create-random",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "create-random"
+              ]
+            },
+            "description": "SIMULATION ENDPOINT: The ultimate 'demo setup' tool. In a single call, it creates a family profile, an initial user with a dashboard, and initializes the digital wallet.\\n\\n### Request Body (Partial CreateProfileDto - Optional):\\n- **profileName** (string): Custom name for the profile. Randomly generated if omitted.\\n- **email** (string): User's email. Randomly generated if omitted.\\n- **userName** (string): User's name. Randomly generated if omitted.\\n\\n### Response Body:\\n- Returns the full `Profile` structure including:\\n  - **id** (UUID)\\n  - **name** (string)\\n  - **users** (Array): Contains the first user created.\\n  - **wallet** (Object): The initialized wallet for the profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"profileName\": \"prof hack\",\n    \"email\": \"hack@example.com\",\n    \"userName\": \"prof hack\" // username for user profile to be created\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            },
+            "description": "Creates a new family profile, an associated digital wallet, and the first user for that profile.\\n\\n### Request Body (CreateProfileDto):\\n- **profileName** (string, required): Name of the profile (e.g., 'The Smiths'). Minimum 3 characters.\\n- **email** (string, required): Email address for the first user of this profile.\\n- **userName** (string, required): Full name for the first user. Minimum 2 characters.\\n\\n### Response Body:\\n- Returns the created `Profile` object with its ID and details."
+          },
+          "response": []
+        },
+        {
+          "name": "List All Profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            },
+            "description": "Lists all existing family profiles."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Full Profile Snapshot",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/{{profileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "{{profileId}}"
+              ]
+            },
+            "description": "Full profile snapshot including all linked users, wallet balance, and asset positions."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/{{profileId}}/wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "{{profileId}}",
+                "wallet"
+              ]
+            },
+            "description": "Retrieve only the wallet balance and asset positions for a specific profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "e8b59b3f-2ce1-4196-82f9-af6888b28a17"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create-Random",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileName\": \"Habash Family\",\n  \"email\": \"bahi.1@example.com\",\n  \"userName\": \"Bahi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/create-random",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "create-random"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": []
+    },
+    {
+      "name": "Simulatation",
+      "item": [
+        {
+          "name": "Simulate Fiat Deposit (Fake)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/simulate-deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "simulate-deposit"
+              ]
+            },
+            "description": "SIMULATION ENDPOINT: Directly adds funds to the user's Tantaropic wallet. This bypasses the bank and roundup engine, allowing you to test 'buying' assets without waiting for real bank transactions.\\n\\n### Request Body:\\n- **amount** (number): The amount of money to deposit. **Note: Passed in the smallest currency unit (e.g., 5000 = 50.00 EGP).**\\n\\n### Response Body:\\n- Returns the updated `DigitalWallet` object showing the new `fiatBalance`."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Purchase",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"57b1ea18-e506-4fd1-bc62-76599e782490\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-bank/simulate-transaction",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-bank",
+                "simulate-transaction"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get User Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "dashboard"
+              ]
+            },
+            "description": "Provides a comprehensive dashboard view for the user, aggregating profile, wallet, and recent transactional data in a single call.\\n\\n### Response Body:\\n- **user** (Object): Basic user info (id, email, name, riskProfile).\\n- **profile** (Object): Detailed profile info including the linked DigitalWallet.\\n- **wallet** (Object): The profile's shared wallet info.\\n  - **fiatBalance** (BigInt): Available cash in piasters (EGP).\\n  - **positions** (Array): Current holdings in various asset classes.\\n- **ledgerEntries** (Array): The **last 10 transactions** (ledger entries) for the profile, sorted by date (descending). Used for the 'Recent Activity' widget. Each entry includes:\\n  - **id** (UUID): Entry identifier.\\n  - **type** (Enum): ROUNDUP, DEPOSIT, WITHDRAWAL, BUY, SELL, FEE.\\n  - **amount** (BigInt): Transaction amount.\\n  - **description** (string): Friendly summary of the event."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mock Bank",
+      "item": [
+        {
+          "name": "Mock Bank Deposit (Simulation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"57b1ea18-e506-4fd1-bc62-76599e782490\",\n  \"amount\": 17,\n  \"currency\": \"EGP\",  \n  \"idempotencyKey\": \"deposit-key-7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-bank/deposits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-bank",
+                "deposits"
+              ]
+            },
+            "description": "SIMULATION ENDPOINT: Simulates the bank's 'deposit' operation when a user withdraws funds from their Tantaropic wallet back to their bank account.  \n  \nDoesn't update the user data in the data base, don't use this, use the other one"
+          },
+          "response": []
+        },
+        {
+          "name": "Mock Bank Debit (Simulation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"57b1ea18-e506-4fd1-bc62-76599e782490\",\n  \"amount\": 100,\n  \"currency\": \"EGP\",\n  \"idempotencyKey\": \"78764\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-bank/debits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-bank",
+                "debits"
+              ]
+            },
+            "description": "SIMULATION ENDPOINT: Simulates the bank's 'debit' operation when the roundup engine collects funds from the user.\n\nDoesn't affect the user data, just for testing and simulation"
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Bank Purchase (Simulation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"57b1ea18-e506-4fd1-bc62-76599e782490\",\n  \"amount\": 500.75,\n  \"merchantTag\": \"Starbucks\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-bank/simulate-transaction",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-bank",
+                "simulate-transaction"
+              ]
+            },
+            "description": "SIMULATION ENDPOINT: Triggers a sequence where a 'mock bank' sends a webhook to Tantaropic as if the user just spent money at a shop. This is the entry point for testing the entire Roundup flow.\\n\\n### Request Body (SimulateTransactionRequestDto - All Optional):\\n- **userId** (UUID): Target user. Random if omitted.\\n- **amount** (number): Purchase amount (e.g., 50.75). Random if omitted.\\n- **currency** (Enum): Default `EGP`.\\n- **merchantTag** (Enum): Default `SHOPPING`.\\n- **idempotencyKey** (string): Unique key for the simulated bank event.\\n\\n### Response Body (SimulateTransactionResponseDto):\\n- **success** (boolean): True if simulation was triggered.\\n- **transactionId** (string): The bank transaction ID that was generated.\\n- **webhookDelivered** (boolean): True if the internal webhook call to `/bank-integrations/transaction-webhook` succeeded."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Investment",
+      "item": [
+        {
+          "name": "Get Asset Prices (Mock)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mock-exchange/prices?assetClass=GOLD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-exchange",
+                "prices"
+              ],
+              "query": [
+                {
+                  "key": "assetClass",
+                  "value": "GOLD"
+                }
+              ]
+            },
+            "description": "Retrieve current market prices from the mock exchange. These prices are used to calculate the value of user positions and for executing trades.\\n\\n### Query Parameters:\\n- **assetClass** (Enum, optional): Filter for a specific asset (`GOLD`, `CRYPTO`, `US_STOCKS`, `REAL_ESTATE`). If omitted, returns all prices.\\n\\n### Response Body (PriceQuoteResponseDto):\\n- **prices** (Array): List of asset price objects.\\n  - **assetClass** (Enum): The asset identifier.\\n  - **pricePerUnit** (BigInt): Current price in piasters (EGP).\\n  - **currency** (Enum): Currency of the price (`EGP`).\\n  - **updatedAt** (ISO Date): Last price update timestamp."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Market Prices (Admin Mock)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assetClass\": \"GOLD\",\n  \"pricePerUnit\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-exchange/set-prices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-exchange",
+                "set-prices"
+              ]
+            },
+            "description": "ADMIN SIMULATION: Manually override the current market price for any asset. This is useful for testing how the app handles asset growth, losses, or specific allocation triggers.\\n\\n### Request Body:\\n- **assetClass** (Enum, required): The asset to update.\\n- **pricePerUnit** (BigInt, required): The new price in piasters (e.g., to set price to 2000.00 EGP, send `200000`).\\n\\n### Response Body:\\n- `{\\\"success\\\": true}` if the price was updated."
+          },
+          "response": []
+        },
+        {
+          "name": "Sell Asset (Mock)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assetClass\": \"GOLD\",\n  \"units\": 100,\n  \"idempotencyKey\": \"unique-sell-key\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-exchange/sell",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-exchange",
+                "sell"
+              ]
+            },
+            "description": "Executes a mock sell order for a specific asset class. Used when a user wants to liquidate their holdings back to fiat.\\n\\n### Request Body (SellAssetDto):\\n- **assetClass** (Enum, required): The asset to sell.\\n- **units** (BigInt, required): Number of units to sell.\\n- **idempotencyKey** (string, required): Unique key to ensure the trade is only executed once.\\n\\n### Response Body (TradeResponseDto):\\n- **success** (boolean): True if trade was executed.\\n- **tradeId** (UUID): Unique trade identifier.\\n- **assetClass** (Enum): Asset sold.\\n- **units** (BigInt): Number of units sold.\\n- **executionPrice** (BigInt): The price per unit at sale.\\n- **totalAmount** (BigInt): Total proceeds added to fiat balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Buy Asset (Mock)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assetClass\": \"GOLD\",\n  \"amount\": 1000,\n  \"idempotencyKey\": \"unique-buy-key\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mock-exchange/buy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mock-exchange",
+                "buy"
+              ]
+            },
+            "description": "Executes a mock buy order for a specific asset class. This is used by the Roundup Engine to allocate collected funds into assets.\\n\\n### Request Body (BuyAssetDto):\\n- **assetClass** (Enum, required): The asset to buy (`GOLD`, `CRYPTO`, `US_STOCKS`, etc.).\\n- **amount** (BigInt, required): Total fiat amount to spend in the smallest unit.\\n- **currency** (Enum, required): Fiat currency being used (e.g., `EGP`).\\n- **idempotencyKey** (string, required): Unique key to ensure the trade is only executed once.\\n\\n### Response Body (TradeResponseDto):\\n- **success** (boolean): True if trade was executed.\\n- **tradeId** (UUID): Unique trade identifier.\\n- **assetClass** (Enum): Asset purchased.\\n- **units** (BigInt): Number of asset units acquired.\\n- **executionPrice** (BigInt): The market price at which the trade occurred.\\n- **totalAmount** (BigInt): The actual amount spent."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

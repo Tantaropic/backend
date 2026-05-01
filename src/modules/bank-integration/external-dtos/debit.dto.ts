@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { Currency } from '../../../common/enums';
 import { Transform } from 'class-transformer';
+import { BadRequestException } from '@nestjs/common';
 
 export class DebitRequestDto {
   @IsNotEmpty()
@@ -19,7 +20,9 @@ export class DebitRequestDto {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new BadRequestException(
+        `Invalid amount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
   amount: bigint;
@@ -50,7 +53,9 @@ export class DebitResponseDto {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new BadRequestException(
+        `Invalid amount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
   amount: bigint;

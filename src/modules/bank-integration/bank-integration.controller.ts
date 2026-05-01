@@ -3,7 +3,7 @@ import { BankIntegrationService } from './bank-integration.service';
 import {
   TransactionWebhookRequestDto,
   TransactionWebhookResponseDto,
-} from './external-dtos/transaction-webhock.dto';
+} from './external-dtos/transaction-webhook.dto';
 
 @Controller('bank-integrations')
 export class BankIntegrationController {
@@ -12,10 +12,11 @@ export class BankIntegrationController {
   ) {}
 
   @Post('transaction-webhook')
-  transactionWebhook(
+  async transactionWebhook(
     @Body() dto: TransactionWebhookRequestDto,
-  ): TransactionWebhookResponseDto {
-    const response = this.bankIntegrationService.handleTransactionWebhook(dto);
+  ): Promise<TransactionWebhookResponseDto> {
+    const response =
+      await this.bankIntegrationService.handleTransactionWebhook(dto);
     return response;
   }
 }

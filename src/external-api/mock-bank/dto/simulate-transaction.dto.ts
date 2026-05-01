@@ -2,6 +2,7 @@ import { IsString, IsEnum, IsBoolean, IsOptional } from 'class-validator';
 import { Currency } from '../../../common/enums';
 import { MerchantTag } from '../../../common/interfaces/bank-provider.interface';
 import { Transform } from 'class-transformer';
+import { BadRequestException } from '@nestjs/common';
 
 export class SimulateTransactionRequestDto {
   @IsOptional()
@@ -13,7 +14,9 @@ export class SimulateTransactionRequestDto {
     try {
       return BigInt(String(value));
     } catch {
-      throw new Error(`Invalid amount ${value} - Failed to convert to BigInt`);
+      throw new BadRequestException(
+        `Invalid amount ${value} - Failed to convert to BigInt`,
+      );
     }
   })
   amount: bigint;

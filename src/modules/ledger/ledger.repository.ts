@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LedgerEntry } from '@prisma/client';
+import { LedgerEntry, Prisma } from '@prisma/client';
 import { BaseRepository } from '../../common/repositories/base.repository';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { Money } from '../../common/domain/value-objects/money.vo';
@@ -21,10 +21,15 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
    * Saves a new ledger entry.
    * This method "unwraps" the Money VO into amount (BigInt) and currency (string) for Prisma persistence.
    */
-  async saveEntry(data: LedgerEntryDto, money: Money): Promise<LedgerEntry> {
+  async saveEntry(
+    data: LedgerEntryDto,
+    money: Money,
+    tx?: Prisma.TransactionClient,
+  ): Promise<LedgerEntry> {
     const { amount, currency } = money;
+    const client = tx ?? this.prisma;
 
-    return await this.db.create({
+    return await client.ledgerEntry.create({
       data: {
         ...data,
         amount,
@@ -35,11 +40,11 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
 
   /**
    * Calculates the balance for a given user.
-   * This method "wraps" the raw database rows back into safe Money VO instances using fromSmallestUnit.
+   * This method "wraps" the raw database rows back into safe Money VO instances using fromMinorUnit.
    * All financial math happens inside the Money VO, never using raw numbers in the repository.
    */
   async getBalance(userId: string): Promise<Money> {
-    const entries = await this.db.findMany({
+    const entries = await this.prisma.ledgerEntry.findMany({
       where: { userId },
     });
 
@@ -47,19 +52,20 @@ export class LedgerRepository extends BaseRepository<LedgerEntry> {
     return entries.reduce(
       (total, entry) => {
         // WRAP the raw DB row into the Money VO
-        const entryMoney = Money.fromSmallestUnit(entry.amount, entry.currency);
+        const entryMoney = Money.fromMinorUnit(entry.amount, entry.currency);
 
         // Determine if the entry is a credit (addition) or debit (subtraction)
+        // Credit-side entries increase the balance; everything else is a debit.
         const isCredit = (
           [
-            LedgerEntryType.SWEEP,
-            LedgerEntryType.INBOUND_TRANSFER,
+            LedgerEntryType.USER_DEPOSIT,
+            LedgerEntryType.ROUNDUP,
           ] as LedgerEntryType[]
         ).includes(entry.type);
 
         return isCredit ? total.add(entryMoney) : total.subtract(entryMoney);
       },
-      Money.fromSmallestUnit(0n, 'EGP'),
+      Money.fromMinorUnit(0n, 'EGP'),
     );
   }
 }

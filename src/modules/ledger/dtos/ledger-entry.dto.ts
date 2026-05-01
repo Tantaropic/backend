@@ -8,5 +8,6 @@ export interface LedgerEntryDto {
   assetUnits?: bigint;
   executionPrice?: bigint;
   transactionEventId?: string;
+  idempotencyKey?: string;
   note?: string;
 }

@@ -69,6 +69,7 @@ export class MockBankService {
       currency: dto.currency,
       merchantTag: dto.merchantTag,
       userId: dto.userId,
+      idempotencyKey: dto.idempotencyKey,
     };
 
     // try to send transaction webhook to the system
@@ -102,12 +103,12 @@ export class MockBankService {
       currency: debitDto.currency,
       userId: debitDto.userId,
       transactionId: randomUUID(),
-      message: `Collected ${debitDto.amount} ${debitDto.currency} from user ${debitDto.userId}`,
+      message: `[from: MOCK BANK] Collected ${debitDto.amount} ${debitDto.currency} from user ${debitDto.userId}`,
     };
 
     this.setDebitIdempotencyKey(debitDto.idempotencyKey, response);
     this.logger.log(
-      `Funds collected: ${debitDto.amount} ${debitDto.currency} for txn ${response.transactionId}`,
+      `[from: MOCK BANK] Funds collected: ${debitDto.amount} ${debitDto.currency} for txn ${response.transactionId}`,
     );
 
     return response;
@@ -153,7 +154,10 @@ export class MockBankService {
   ): SimulateTransactionRequestDto {
     return {
       userId: dto.userId ?? randomUUID(),
-      amount: dto.amount ? BigInt(dto.amount) : BigInt(this.randomAmount()),
+      amount:
+        (dto.amount
+          ? BigInt(Math.round(Number(dto.amount)))
+          : BigInt(this.randomAmount())) * 100n,
       currency: dto.currency ?? Currency.EGP,
       merchantTag: dto.merchantTag ?? this.randomMerchanTag(),
       idempotencyKey: dto.idempotencyKey ?? randomUUID(),

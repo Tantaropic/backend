@@ -14,4 +14,8 @@ export enum SystemEventType {
 
   // AI Domain
   AI_INSIGHT_GENERATED = 'ai.insight_generated',
+  ROUNDUP_DEBITED = 'roundup.debited',
+  FUNDS_READY_FOR_INVESTMENT = 'funds.ready_for_investment',
+  WITHDRAWAL_REQUESTED = 'withdrawal.requested',
+  WITHDRAWAL_FEE_APPLIED = 'withdrawal.fee_applied',
 }
