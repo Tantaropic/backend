@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BankIntegrationModule } from '../bank-integration/bank-integration.module';
 import { TransactionModule } from '../transaction/transaction.module';
 import { UsersModule } from '../users/users.module';
+import { WalletModule } from '../wallet/wallet.module';
 import { RoundUpEngineService } from './roundup-engine.service';
 import { LedgerRepository } from '../ledger/ledger.repository';
 
@@ -11,13 +12,19 @@ import { LedgerRepository } from '../ledger/ledger.repository';
  * Fully isolated — depends only on:
  *   - BankIntegrationModule (for IBankProvider)
  *   - TransactionModule (for TransactionEventRepository)
+ *   - WalletModule (for WalletRepository)
  *   - LedgerRepository (for writing ROUNDUP entries)
  *   - EventEmitter2 (global, from EventEmitterModule)
  *
  * Can be safely removed from AppModule without affecting any other module.
  */
 @Module({
-  imports: [BankIntegrationModule, TransactionModule, UsersModule],
+  imports: [
+    BankIntegrationModule,
+    TransactionModule,
+    UsersModule,
+    WalletModule,
+  ],
   providers: [RoundUpEngineService, LedgerRepository],
 })
 export class RoundUpEngineModule {}

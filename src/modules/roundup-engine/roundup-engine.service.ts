@@ -13,6 +13,8 @@ import { LedgerRepository } from '../ledger/ledger.repository';
 import { UserRepository } from '../users/user.repository';
 import { calculateRoundUp } from './roundup.calculator';
 import { Money } from '../../common/domain/value-objects/money.vo';
+import { PrismaService } from '../../database/prisma/prisma.service';
+import { WalletRepository } from '../wallet/wallet.repository';
 
 /**
  * Round-Up Engine — listens for incoming bank transaction events,
@@ -35,6 +37,8 @@ export class RoundUpEngineService {
     private readonly transactionEventRepo: TransactionEventRepository,
     private readonly ledgerRepo: LedgerRepository,
     private readonly userRepository: UserRepository,
+    private readonly walletRepository: WalletRepository,
+    private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -44,22 +48,25 @@ export class RoundUpEngineService {
    * Flow:
    * 1. Calculate round-up amount (next multiple of 5, always > 0)
    * 2. Collect funds via IBankProvider.debit()
-   * 3. Write ROUNDUP ledger entry
-   * 4. Mark TransactionEvent as processed
-   * 5. Emit WALLET_FUNDS_ROUNDUP for the Fee Engine
+   * 3. Write ROUNDUP ledger entry & Update Wallet Balance + Position + Version
+   * 5. Mark TransactionEvent as processed
+   * 6. Emit WALLET_FUNDS_ROUNDUP for the Fee Engine
    */
   @OnEvent(EventType.SystemEventType.BANK_TRANSACTION_WEBHOOK_RECEIVED)
   async handleTransaction(
     payload: EventsPayloads.TransactionWebhookReceivedEventPayload,
   ): Promise<void> {
+    console.log(payload);
     const {
       userId,
       transactionId,
       transactionEventId,
       money,
       merchantTag,
-      idempotencyKey: transactionWebHookIdempotencyKey,
+      idempotencyKey,
     } = payload;
+
+    const transactionWebHookIdempotencyKey = idempotencyKey;
 
     // ─── 0. Check idempotency key & validate user ───
     if (transactionWebHookIdempotencyKey) {
@@ -83,11 +90,13 @@ export class RoundUpEngineService {
       `Processing round-up for txn ${transactionWebHookIdempotencyKey}`,
     );
 
-    const user = await this.userRepository.getUser(userId);
-    if (!user) {
-      this.logger.error(`User ${userId} not found`);
+    const user = await this.userRepository.findByIdWithProfileAndWallet(userId);
+    if (!user || !user.profile.wallet) {
+      this.logger.error(`User or Wallet for ${userId} not found`);
       return;
     }
+
+    const wallet = user.profile.wallet;
 
     // ─── 1. Calculate round-up ───
     const roundUpMoney = calculateRoundUp(money, user.roundUpStep);
@@ -110,23 +119,35 @@ export class RoundUpEngineService {
       throw new Error(`Round-up collection failed`);
     }
 
-    // ─── 3. Write ROUNDUP ledger entry ───
-    await this.ledgerRepo.saveEntry(
-      {
-        userId,
-        type: LedgerEntryType.ROUNDUP,
-        transactionEventId,
-        idempotencyKey: debitResult.idempotencyKey,
-        note: `Round-up from ${merchantTag ?? 'unknown'} transaction`,
-      },
-      roundUpMoney,
-    );
+    // ─── 3. Atomic Updates: Ledger + TransactionEvent + Wallet Balance (OCC) ───
+    await this.prisma.$transaction(async (tx) => {
+      // 3.1. Write ROUNDUP ledger entry
+      await this.ledgerRepo.saveEntry(
+        {
+          userId,
+          walletId: wallet.id,
+          type: LedgerEntryType.ROUNDUP,
+          transactionEventId,
+          idempotencyKey: debitResult.idempotencyKey,
+          note: `Round-up from ${merchantTag ?? 'unknown'} transaction`,
+        },
+        roundUpMoney,
+        tx,
+      );
 
-    // ─── 4. Mark TransactionEvent as processed ───
-    await this.transactionEventRepo.markProcessed(
-      transactionEventId,
-      roundUpMoney.toMinorUnit().amount,
-    );
+      // 3.2. Mark TransactionEvent as processed
+      await this.transactionEventRepo.markProcessed(
+        transactionEventId,
+        roundUpMoney.toMinorUnit().amount,
+      );
+
+      // 3.3. Update Wallet Balance with OCC
+      await this.walletRepository.incrementFiatBalance(
+        wallet.id,
+        roundUpMoney.toMinorUnit().amount,
+        wallet.version,
+      );
+    });
 
     // ─── 5. Emit for Fee Engine ───
     const roundUpEvent: EventsPayloads.RoundUpCompletedEventPayload = {
