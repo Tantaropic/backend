@@ -102,14 +102,13 @@ describe('AiInsightsService', () => {
     it('generates a nudge, persists it, and emits AI_INSIGHT_GENERATED', async () => {
       await service.handleTransactionWebhook(buildPayload());
 
-      expect(prisma.transactionEvent.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            userId: 'user-1',
-            merchantTag: 'coffee_shop',
-          }),
-        }),
-      );
+      const countMock = prisma.transactionEvent.count;
+      expect(countMock).toHaveBeenCalledTimes(1);
+      const calls = countMock.mock.calls as Array<
+        [{ where: { userId: string; merchantTag: string } }]
+      >;
+      expect(calls[0][0].where.userId).toBe('user-1');
+      expect(calls[0][0].where.merchantTag).toBe('coffee_shop');
       expect(llm.complete).toHaveBeenCalledTimes(1);
       expect(repo.saveInsight).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -226,6 +225,13 @@ describe('AiInsightsService', () => {
   // ─── handleDailyPortfolioPulse ──────────────────────────────────────────
 
   describe('handleDailyPortfolioPulse', () => {
+    // The @Cron decorator widens the method's inferred type to `any`; expose a
+    // typed handle so call sites stay type-safe without lint suppressions.
+    const runPulse = (): Promise<void> =>
+      (
+        service as unknown as { handleDailyPortfolioPulse: () => Promise<void> }
+      ).handleDailyPortfolioPulse();
+
     const wallet = (
       overrides: Partial<{
         walletId: string;
@@ -244,7 +250,7 @@ describe('AiInsightsService', () => {
     });
 
     it('skips when there are no active wallets', async () => {
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
       expect(llm.complete).not.toHaveBeenCalled();
       expect(repo.saveInsight).not.toHaveBeenCalled();
     });
@@ -253,7 +259,7 @@ describe('AiInsightsService', () => {
       repo.findActiveWalletsWithUsers.mockResolvedValueOnce([
         wallet({ userIds: [] }),
       ]);
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
       expect(llm.complete).not.toHaveBeenCalled();
       expect(repo.saveInsight).not.toHaveBeenCalled();
     });
@@ -262,13 +268,13 @@ describe('AiInsightsService', () => {
       repo.findActiveWalletsWithUsers.mockResolvedValueOnce([
         wallet({ fiatBalance: 0n, positions: [] }),
       ]);
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
       expect(llm.complete).not.toHaveBeenCalled();
     });
 
     it('writes one insight per user in the profile, sharing the LLM message', async () => {
       repo.findActiveWalletsWithUsers.mockResolvedValueOnce([wallet()]);
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
 
       expect(llm.complete).toHaveBeenCalledTimes(1);
       expect(repo.saveInsight).toHaveBeenCalledTimes(2);
@@ -302,7 +308,7 @@ describe('AiInsightsService', () => {
         .mockRejectedValueOnce({ code: 'P2002' })
         .mockResolvedValueOnce({ id: 'insight-2' });
 
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
 
       expect(repo.saveInsight).toHaveBeenCalledTimes(2);
       const aiEmits = emitSpy.mock.calls.filter(
@@ -320,7 +326,7 @@ describe('AiInsightsService', () => {
         .mockRejectedValueOnce(new Error('llm down'))
         .mockResolvedValueOnce('فلوسك بتكبر');
 
-      await service.handleDailyPortfolioPulse();
+      await runPulse();
 
       expect(repo.saveInsight).toHaveBeenCalledTimes(1);
       expect(repo.saveInsight).toHaveBeenCalledWith(
@@ -336,8 +342,9 @@ describe('AiInsightsService', () => {
       const spy = jest.spyOn(service, 'handleTransactionWebhook');
       emitter.on(
         EventType.SystemEventType.BANK_TRANSACTION_WEBHOOK_RECEIVED,
-        (p: TransactionWebhookReceivedEventPayload) =>
-          service.handleTransactionWebhook(p),
+        (p: TransactionWebhookReceivedEventPayload) => {
+          void service.handleTransactionWebhook(p);
+        },
       );
       const payload = buildPayload();
       emitter.emit(
