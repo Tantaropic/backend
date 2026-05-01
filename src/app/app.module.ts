@@ -16,6 +16,8 @@ import { BankIntegrationModule } from '../modules/bank-integration/bank-integrat
 import { AiInsightsModule } from '../modules/ai-insights/ai-insights.module';
 import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.module';
 import { RealtimeModule } from '../modules/realtime/realtime.module';
+import { PriceFeedModule } from '../modules/price-feed/price-feed.module';
+import { RealtimeCommonModule } from '../common/realtime/realtime-common.module';
 
 @Module({
   imports: [
@@ -35,8 +37,11 @@ import { RealtimeModule } from '../modules/realtime/realtime.module';
     RealtimeModule,
     EventEmitterModule.forRoot({
       wildcard: true,
+      verboseMemoryLeak: true,
     }),
     ScheduleModule.forRoot(),
+    RealtimeCommonModule,
+    PriceFeedModule,
   ],
   controllers: [AppController],
   providers: [],

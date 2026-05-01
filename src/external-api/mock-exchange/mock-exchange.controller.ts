@@ -1,12 +1,8 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { MockExchangeService } from './mock-exchange.service';
 import { AssetClass } from '../../common/enums';
-import {
-  BuyAssetDto,
-  SellAssetDto,
-  PriceQuoteResponseDto,
-  TradeResponseDto,
-} from './dtos';
+import { BuyAssetDto, SellAssetDto } from './dtos';
+import { JsonHelper } from 'src/common/helpers';
 
 @Controller('mock-exchange')
 export class MockExchangeController {
@@ -18,16 +14,14 @@ export class MockExchangeController {
    * @returns Price quotes for requested assets.
    */
   @Get('prices')
-  getPrices(
-    @Query('assetClass') assetClass?: AssetClass,
-  ): PriceQuoteResponseDto {
+  getPrices(@Query('assetClass') assetClass?: AssetClass) {
     const allPrices = this.exchangeService.getPrices();
-
     const filtered = assetClass
       ? allPrices.filter((p) => p.assetClass === assetClass)
       : allPrices;
-
-    return { prices: filtered };
+    return {
+      prices: filtered.map((p) => JsonHelper.replaceBigInts(p)),
+    };
   }
 
   /**
@@ -36,8 +30,8 @@ export class MockExchangeController {
    * @returns Trade confirmation with units acquired and execution price.
    */
   @Post('buy')
-  buy(@Body() dto: BuyAssetDto): TradeResponseDto {
-    return this.exchangeService.buy(dto);
+  buy(@Body() dto: BuyAssetDto) {
+    return JsonHelper.replaceBigInts(this.exchangeService.buy(dto));
   }
 
   /**
@@ -46,8 +40,8 @@ export class MockExchangeController {
    * @returns Trade confirmation with proceeds from the sale.
    */
   @Post('sell')
-  sell(@Body() dto: SellAssetDto): TradeResponseDto {
-    return this.exchangeService.sell(dto);
+  sell(@Body() dto: SellAssetDto) {
+    return JsonHelper.replaceBigInts(this.exchangeService.sell(dto));
   }
 
   /**
@@ -57,6 +51,6 @@ export class MockExchangeController {
   @Post('set-prices')
   setPrices(@Body() body: { assetClass: AssetClass; pricePerUnit: bigint }) {
     this.exchangeService.setPrice(body.assetClass, body.pricePerUnit);
-    return { success: true };
+    return JsonHelper.replaceBigInts({ success: true });
   }
 }
