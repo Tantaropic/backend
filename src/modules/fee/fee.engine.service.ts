@@ -20,7 +20,7 @@ export class FeeEngineService {
    * Deposit path: cash has already been credited (gross) to the user's wallet by the
    * Bank Integration. We carve off FUND_FEE, then signal the Asset Allocator with the net.
    */
-  @OnEvent(EventType.SystemEventType.ROUNDUP_DEBITED)
+  @OnEvent(EventType.SystemEventType.WALLET_FUNDS_ROUNDUP)
   async onRoundupDebited(
     payload: EventsPayloads.RoundupDebitedEventPayload,
   ): Promise<void> {
