@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TransactionEventRepository } from '../transaction/transaction-event.repository';
 import { Money } from '../../common/domain/value-objects/money.vo';
 import {
   type IFundTransferRequest,
@@ -38,6 +39,7 @@ export class BankIntegrationService implements IBankProvider {
     private readonly http: HttpClientService,
     private readonly config: ConfigService,
     private readonly eventService: EventEmitter2,
+    private readonly transactionEventRepo: TransactionEventRepository,
   ) {
     const baseUrl = this.config.get<string>(
       'BASE_URL',
@@ -91,17 +93,46 @@ export class BankIntegrationService implements IBankProvider {
     }
   }
 
-  handleTransactionWebhook(
+  async handleTransactionWebhook(
     payload: TransactionWebhookRequestDto,
-  ): TransactionWebhookResponseDto {
+  ): Promise<TransactionWebhookResponseDto> {
     this.logger.log(`Handling transaction webhook for user ${payload.userId}`);
 
+    // Idempotency: skip if this transactionId was already processed
+    const existing = await this.transactionEventRepo.findByTransactionId(
+      payload.transactionId,
+    );
+    if (existing) {
+      this.logger.log(
+        `Duplicate webhook ignored for txn ${payload.transactionId}`,
+      );
+      return { success: true, transactionId: payload.transactionId };
+    }
+
+    // Convert to domain Money VO at the ACL boundary
+    const money = Money.fromSmallestUnit(payload.amount, payload.currency);
+
+    // Persist the raw transaction event before emitting
+    const txEvent = await this.transactionEventRepo.saveFromWebhook({
+      userId: payload.userId,
+      transactionId: payload.transactionId,
+      merchantTag: payload.merchantTag,
+      amount: payload.amount,
+      currency: payload.currency,
+      occurredAt: new Date(payload.occurredAt),
+      rawPayload: payload,
+    });
+
+    // Emit domain event for downstream engines (Round-Up, etc.)
     const eventPayload: EventsPayloads.TransactionWebhookReceivedEventPayload =
       {
         timestamp: new Date(),
         userId: payload.userId,
         transactionId: payload.transactionId,
-        money: Money.fromSmallestUnit(payload.amount, payload.currency),
+        transactionEventId: txEvent.id,
+        money,
+        merchantTag: payload.merchantTag,
+        occurredAt: new Date(payload.occurredAt),
       };
 
     this.eventService.emit(
@@ -111,7 +142,7 @@ export class BankIntegrationService implements IBankProvider {
 
     return {
       success: true,
-      transactionId: eventPayload.transactionId,
+      transactionId: payload.transactionId,
     };
   }
 
