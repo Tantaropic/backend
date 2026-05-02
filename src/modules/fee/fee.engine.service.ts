@@ -3,8 +3,9 @@ import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { FeeCalculatorService } from './fee.calculator.service';
 import { EventType, EventsPayloads } from '../../common/events';
-import { LedgerEntryType, AssetClass, Currency } from '../../common/enums';
+import { LedgerEntryType } from '../../common/enums';
 import { Money } from '../../common/domain/value-objects/money.vo';
+import { DeductProfitFeeDto } from './dtos/deduct-profit-fee.dto';
 
 @Injectable()
 export class FeeEngineService {
@@ -119,135 +120,83 @@ export class FeeEngineService {
   }
 
   /**
-   * Withdrawal path: the Withdrawal Service has decided which units to sell per asset.
-   * We compute realized profit (WAC) per asset, sum the tiered PROFIT_FEE, decrement
-   * positions/AUM under OCC, post one PROFIT_FEE ledger row, then emit
-   * WITHDRAWAL_FEE_APPLIED so the Withdrawal Service can finalize the bank transfer.
+   * Calculates and posts the PROFIT_FEE for a redemption sale.
+   * Called synchronously by the RedemptionOrchestrator — not event-driven.
+   *
+   * Steps:
+   *   1. Calculate realized profit = proceeds - cost basis (WAC).
+   *   2. Apply tiered profit fee bracket on the realized profit.
+   *   3. Post PROFIT_FEE ledger entry within a transaction.
+   *   4. Return fee breakdown so the orchestrator can credit the net to wallet.
    */
-  @OnEvent(EventType.SystemEventType.WITHDRAWAL_REQUESTED)
-  async onWithdrawalRequested(
-    payload: EventsPayloads.WithdrawalRequestedEventPayload,
-  ): Promise<void> {
-    const { userId, walletId, idempotencyKey, sales } = payload;
+  async deductProfitFeeOnRedemption(
+    params: DeductProfitFeeDto,
+  ): Promise<{ realizedProfit: Money; profitFee: Money; netProceeds: Money }> {
+    const {
+      userId,
+      walletId,
+      executedUnits,
+      executionPrice,
+      averageBuyPrice,
+      idempotencyKey,
+    } = params;
     const feeIdempotencyKey = `profit-fee:${idempotencyKey}`;
 
-    if (sales.length === 0) {
-      throw new Error('WITHDRAWAL_REQUESTED carried no sales');
-    }
-    const currency: Currency = sales[0].executionPrice.currency;
-
-    // Load wallet (for profileId + OCC version on profile) and all touched positions.
-    const wallet = await this.prisma.digitalWallet.findUniqueOrThrow({
-      where: { id: walletId },
-      include: { profile: true },
+    // 1. Pure calculation: realized profit
+    const { realizedProfit } = this.calculator.calculateRealizedProfit({
+      units: executedUnits,
+      executionPrice,
+      averageBuyPrice,
     });
 
-    const assetClasses = sales.map((s) => s.assetClass);
-    const positions = await this.prisma.walletPosition.findMany({
-      where: { walletId, assetClass: { in: assetClasses } },
-    });
-    const positionByAsset = new Map<AssetClass, (typeof positions)[number]>(
-      positions.map((p) => [p.assetClass, p]),
+    // 2. Pure calculation: tiered profit fee (zero when no profit)
+    const { bps, fee: profitFee } =
+      this.calculator.calculateProfitFee(realizedProfit);
+
+    // 3. Calculate gross proceeds and net (proceeds - fee)
+    const grossProceeds = Money.fromMinorUnit(
+      executedUnits * executionPrice.amount,
+      executionPrice.currency,
     );
+    const netProceeds = grossProceeds.subtract(profitFee);
 
-    // Per-sale: realized profit + tiered fee. Aggregate totals.
-    let proceedsTotal = Money.fromMinorUnit(0n, currency);
-    let costOfSoldTotal = Money.fromMinorUnit(0n, currency);
-    let realizedProfitTotal = Money.fromMinorUnit(0n, currency);
-    let profitFeeTotal = Money.fromMinorUnit(0n, currency);
-
-    for (const sale of sales) {
-      const position = positionByAsset.get(sale.assetClass);
-      if (!position) {
-        throw new Error(`Missing wallet position for asset ${sale.assetClass}`);
-      }
-      if (position.totalUnits < sale.units) {
-        throw new Error(
-          `Insufficient units for ${sale.assetClass}: have ${position.totalUnits}, need ${sale.units}`,
-        );
-      }
-
-      const { proceeds, costOfSold, realizedProfit } =
-        this.calculator.calculateRealizedProfit({
-          units: sale.units,
-          executionPrice: sale.executionPrice,
-          averageBuyPrice: position.averageBuyPrice,
-        });
-      const { fee } = this.calculator.calculateProfitFee(realizedProfit);
-
-      proceedsTotal = proceedsTotal.add(proceeds);
-      costOfSoldTotal = costOfSoldTotal.add(costOfSold);
-      realizedProfitTotal = realizedProfitTotal.add(realizedProfit);
-      profitFeeTotal = profitFeeTotal.add(fee);
-    }
-
-    const netToUser = proceedsTotal.subtract(profitFeeTotal);
-
-    // Atomic: OCC-decrement positions, decrement AUM by principal, post PROFIT_FEE row.
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        for (const sale of sales) {
-          const position = positionByAsset.get(sale.assetClass)!;
-          const positionUpdate = await tx.walletPosition.updateMany({
-            where: { id: position.id, version: position.version },
-            data: {
-              totalUnits: { decrement: sale.units },
-              version: { increment: 1 },
-            },
-          });
-          if (positionUpdate.count === 0) {
-            throw new Error(
-              `Concurrency conflict: position version mismatch for ${sale.assetClass}`,
-            );
-          }
-        }
-
-        const profileUpdate = await tx.profile.updateMany({
-          where: { id: wallet.profileId, version: wallet.profile.version },
-          data: {
-            aum: { decrement: costOfSoldTotal.amount },
-            version: { increment: 1 },
-          },
-        });
-        if (profileUpdate.count === 0) {
-          throw new Error('Concurrency conflict: profile version mismatch');
-        }
-
-        await tx.ledgerEntry.create({
+    // 4. Post PROFIT_FEE ledger entry (only if fee > 0)
+    if (!profitFee.isZero()) {
+      try {
+        await this.prisma.ledgerEntry.create({
           data: {
             userId,
             walletId,
             type: LedgerEntryType.PROFIT_FEE,
-            amount: profitFeeTotal.amount,
-            currency: profitFeeTotal.currency,
+            amount: profitFee.amount,
+            currency: profitFee.currency,
             idempotencyKey: feeIdempotencyKey,
-            note: `PROFIT_FEE on realized profit ${realizedProfitTotal.amount}`,
+            note: `PROFIT_FEE ${bps}bps on realized profit ${realizedProfit.amount}`,
           },
         });
-      });
-    } catch (err) {
-      if (this.isDuplicateIdempotencyKey(err)) {
-        this.logger.warn(
-          `PROFIT_FEE already posted for ${feeIdempotencyKey}, skipping.`,
-        );
-      } else {
-        throw err;
+      } catch (err) {
+        if (this.isDuplicateIdempotencyKey(err)) {
+          this.logger.warn(
+            `PROFIT_FEE already posted for ${feeIdempotencyKey}, skipping.`,
+          );
+        } else {
+          throw err;
+        }
       }
     }
 
-    const nextPayload: EventsPayloads.WithdrawalFeeAppliedEventPayload = {
-      userId,
-      walletId,
-      withdrawalRequestId: payload.withdrawalRequestId,
-      transactionId: payload.transactionId,
-      realizedProfit: realizedProfitTotal,
-      profitFee: profitFeeTotal,
-      netToUser,
-      timestamp: new Date(),
-    };
-    this.events.emit(
-      EventType.SystemEventType.WITHDRAWAL_FEE_APPLIED,
-      nextPayload,
+    this.logger.log(
+      `Profit fee: ${profitFee.amount} (${bps}bps) on profit ${realizedProfit.amount}. Net to wallet: ${netProceeds.amount}`,
     );
+
+    return { realizedProfit, profitFee, netProceeds };
   }
+
+  // ─── Manual Deposit Fee Handler (placeholder — activated when deposit is implemented) ───
+  // @OnEvent(EventType.SystemEventType.WALLET_FUNDS_DEPOSIT)
+  // async onWalletFundsDeposit(
+  //   payload: EventsPayloads.WalletFundsDepositEventPayload,
+  // ): Promise<void> {
+  //   // Same logic as onRoundupDebited: apply FUND_FEE, emit FUNDS_READY_FOR_INVESTMENT
+  // }
 }
