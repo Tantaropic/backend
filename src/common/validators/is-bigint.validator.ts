@@ -19,6 +19,7 @@ export function IsBigInt(validationOptions?: ValidationOptions) {
         ...validationOptions,
       },
       validator: {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         validate(value: unknown, _args: ValidationArguments): boolean {
           return typeof value === 'bigint' && value >= 0n;
         },
