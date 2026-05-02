@@ -47,6 +47,10 @@ export type AssetPriceChangedEventPayload = {
   assetId?: string;
   asset: AssetClass;
   assetPrice: Money;
+  /** Signed change vs the previous tick, in basis points */
+  deltaBps?: number;
+  /** Last known price before this tick. Undefined on first tick */
+  previousPrice?: Money;
 } & BaseEventPayload;
 
 // AI events payload.
@@ -136,3 +140,24 @@ export type WalletFundsDepositEventPayload = {
   grossAmount: Money;
   idempotencyKey: string;
 } & BaseEventPayload;
+
+/*
+ * In-memory projection of a user's wallet value at a given price snapshot.
+ * Emitted by WalletProjectionService on each ASSET_PRICE_CHANGED tick for
+ * users currently subscribed to real-time updates. Never persisted.
+ */
+export type WalletValueProjectedEventPayload = {
+  userId: string;
+  profileId: string;
+  walletId: string;
+  fiatBalance: Money;
+  totalValue: Money; // fiat + Σ(units × current price)
+  deltaBps: number; // signed change vs the previous projection for this user
+  perAsset: Array<{
+    asset: AssetClass;
+    units: bigint;
+    pricePerUnit: Money;
+    value: Money;
+  }>;
+  projectedAt: Date;
+};

@@ -18,11 +18,8 @@ export class MockExchangeController {
    * @returns Price quotes for requested assets.
    */
   @Get('prices')
-  getPrices(
-    @Query('assetClass') assetClass?: AssetClass,
-  ): PriceQuoteResponseDto {
+  getPrices(@Query('assetClass') assetClass?: AssetClass) {
     const allPrices = this.exchangeService.getPrices();
-
     const filtered = assetClass
       ? allPrices.filter((p) => p.assetClass === assetClass)
       : allPrices;
@@ -59,6 +56,6 @@ export class MockExchangeController {
   @Post('set-prices')
   setPrices(@Body() body: { assetClass: AssetClass; pricePerUnit: bigint }) {
     this.exchangeService.setPrice(body.assetClass, body.pricePerUnit);
-    return { success: true };
+    return JsonHelper.replaceBigInts({ success: true });
   }
 }
