@@ -110,3 +110,29 @@ export type WithdrawalFeeAppliedEventPayload = {
   profitFee: Money;
   netToUser: Money;
 } & BaseEventPayload;
+
+/**
+ * Emitted by the RedemptionOrchestrator after all steps succeed:
+ * sell asset → deduct profit fee → credit fiat wallet → update AUM.
+ */
+export type RedemptionCompletedEventPayload = {
+  userId: string;
+  walletId: string;
+  assetClass: AssetClass;
+  unitsSold: bigint;
+  grossProceeds: Money;
+  profitFee: Money;
+  netCreditedToWallet: Money;
+  idempotencyKey: string;
+} & BaseEventPayload;
+
+/**
+ * Emitted when a user manually deposits funds into their wallet (top-up).
+ * Consumed by the Fee Engine to apply FUND_FEE before routing to investment.
+ */
+export type WalletFundsDepositEventPayload = {
+  userId: string;
+  walletId: string;
+  grossAmount: Money;
+  idempotencyKey: string;
+} & BaseEventPayload;

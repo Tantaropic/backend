@@ -75,7 +75,7 @@ export class LlmService {
     } = options;
 
     try {
-      const response = await this.callWithRetry(() =>
+      const response: any = await this.callWithRetry(() =>
         this.client.chat.completions.create({
           model: this.defaultModel,
           messages: [
@@ -101,7 +101,7 @@ export class LlmService {
         return fallback;
       }
       throw new Error('LLM returned empty content');
-    } catch (error: unknown) {
+    } catch (error: any) {
       if (fallback !== undefined) {
         this.logger.error(`LLM completion failed: ${String(error)}`);
         return fallback;
@@ -116,7 +116,7 @@ export class LlmService {
     for (let attempt = 1; attempt <= this.retry.maxAttempts; attempt++) {
       try {
         return await operation();
-      } catch (error: unknown) {
+      } catch (error: any) {
         lastError = error;
 
         if (!this.isRetryable(error) || attempt === this.retry.maxAttempts) {
@@ -135,7 +135,7 @@ export class LlmService {
     throw lastError;
   }
 
-  private isRetryable(error: unknown): boolean {
+  private isRetryable(error: any): boolean {
     if (
       error instanceof RateLimitError ||
       error instanceof APIConnectionError ||
@@ -150,7 +150,7 @@ export class LlmService {
     return false;
   }
 
-  private computeDelayMs(error: unknown, attempt: number): number {
+  private computeDelayMs(error: any, attempt: number): number {
     // Honor server-provided Retry-After when present (e.g., on 429).
     if (error instanceof APIError) {
       const headers = error.headers as
@@ -185,7 +185,7 @@ export class LlmService {
     return undefined;
   }
 
-  private describeError(error: unknown): string {
+  private describeError(error: any): string {
     if (error instanceof APIError) {
       return `${error.name} ${String(error.status ?? '')} ${error.message}`.trim();
     }
