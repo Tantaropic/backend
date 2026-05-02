@@ -18,7 +18,7 @@ export class BuyAssetRequestDto {
       );
     }
   })
-  amount: bigint;
+  amount: bigint | string;
 
   @IsNotEmpty()
   @IsEnum(Currency)

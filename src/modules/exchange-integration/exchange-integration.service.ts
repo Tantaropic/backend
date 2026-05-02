@@ -8,7 +8,6 @@ import {
   ITradeResult,
 } from '../../common/interfaces/exchange-provider.interface';
 import { HttpClientService } from '../../common/http';
-import { StringifiedJSON, serialize } from '../../common/helpers/json-helper';
 import { BuyAssetRequestDto } from './external-dtos/buy.dto';
 import { SellAssetRequestDto } from './external-dtos/sell.dto';
 import { TradeResponseDto } from './external-dtos/trade.dto';
@@ -64,16 +63,16 @@ export class ExchangeIntegrationService implements IExchangeProvider {
 
     const externalPayload: BuyAssetRequestDto = {
       assetClass: request.assetClass,
-      amount: request.totalCost.amount,
+      amount: request.totalCost.amount.toString(),
       currency: request.totalCost.currency,
       idempotencyKey: request.idempotencyKey,
     };
 
-    const payloadStringified = serialize<BuyAssetRequestDto>(externalPayload);
+    const payloadStringified = externalPayload;
 
     try {
       const response = await this.http.post<
-        StringifiedJSON<BuyAssetRequestDto>,
+        BuyAssetRequestDto,
         TradeResponseDto
       >(this.exchangeBuyRoute, payloadStringified);
 
@@ -115,15 +114,15 @@ export class ExchangeIntegrationService implements IExchangeProvider {
 
     const externalPayload: SellAssetRequestDto = {
       assetClass: request.assetClass,
-      units: request.units,
+      units: request.units.toString(),
       idempotencyKey: request.idempotencyKey,
     };
 
-    const payloadStringified = serialize<SellAssetRequestDto>(externalPayload);
+    const payloadStringified = externalPayload;
 
     try {
       const response = await this.http.post<
-        StringifiedJSON<SellAssetRequestDto>,
+        SellAssetRequestDto,
         TradeResponseDto
       >(this.exchangeSellRoute, payloadStringified);
 
@@ -167,7 +166,6 @@ export class ExchangeIntegrationService implements IExchangeProvider {
       const response = await this.http.get<PriceQuoteResponseDto>(
         `${this.exchangePricesRoute}?assetClass=${assetClass}`,
       );
-
       const priceData = response.prices.find(
         (p) => p.assetClass === assetClass,
       );

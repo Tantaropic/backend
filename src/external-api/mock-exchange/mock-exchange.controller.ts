@@ -7,7 +7,7 @@ import {
   PriceQuoteResponseDto,
   TradeResponseDto,
 } from './dtos';
-
+import { JsonHelper } from '../../common/helpers';
 @Controller('mock-exchange')
 export class MockExchangeController {
   constructor(private readonly exchangeService: MockExchangeService) {}
@@ -27,7 +27,7 @@ export class MockExchangeController {
       ? allPrices.filter((p) => p.assetClass === assetClass)
       : allPrices;
 
-    return { prices: filtered };
+    return { prices: JsonHelper.replaceBigInts(filtered) };
   }
 
   /**
@@ -37,7 +37,8 @@ export class MockExchangeController {
    */
   @Post('buy')
   buy(@Body() dto: BuyAssetDto): TradeResponseDto {
-    return this.exchangeService.buy(dto);
+    const trade = this.exchangeService.buy(dto);
+    return JsonHelper.replaceBigInts(trade);
   }
 
   /**
@@ -47,7 +48,8 @@ export class MockExchangeController {
    */
   @Post('sell')
   sell(@Body() dto: SellAssetDto): TradeResponseDto {
-    return this.exchangeService.sell(dto);
+    const trade = this.exchangeService.sell(dto);
+    return JsonHelper.replaceBigInts(trade);
   }
 
   /**

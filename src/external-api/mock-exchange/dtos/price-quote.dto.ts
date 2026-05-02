@@ -8,7 +8,12 @@ export interface AssetPriceDto {
 }
 
 export interface PriceQuoteResponseDto {
-  prices: AssetPriceDto[];
+  prices: {
+    assetClass: AssetClass;
+    pricePerUnit: string | bigint;
+    currency: Currency;
+    updatedAt: string;
+  }[];
 }
 
 export interface PriceEntry {

@@ -15,7 +15,7 @@ export class SellAssetRequestDto {
       throw new Error(`Invalid units ${value} - Failed to convert to BigInt`);
     }
   })
-  units: bigint;
+  units: bigint | string;
 
   @IsNotEmpty()
   @IsString()
