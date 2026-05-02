@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { IsBigInt } from '../../../common/validators/is-bigint.validator';
 import { IsMoneyInstance } from '../../../common/validators/is-money.validator';
 import { Money } from '../../../common/domain/value-objects/money.vo';
