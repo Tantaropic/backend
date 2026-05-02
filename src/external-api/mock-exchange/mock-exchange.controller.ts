@@ -4,7 +4,6 @@ import { AssetClass } from '../../common/enums';
 import {
   BuyAssetDto,
   SellAssetDto,
-  PriceQuoteResponseDto,
   TradeResponseDto,
 } from './dtos';
 import { JsonHelper } from '../../common/helpers';
