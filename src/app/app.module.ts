@@ -15,6 +15,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { BankIntegrationModule } from '../modules/bank-integration/bank-integration.module';
 import { AiInsightsModule } from '../modules/ai-insights/ai-insights.module';
 import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.module';
+import { FeeModule } from '../modules/fee/fee.module';
+import { InvestmentModule } from '../modules/investment/investment.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.mo
     BankIntegrationModule,
     AiInsightsModule,
     RoundUpEngineModule,
+    FeeModule,
+    InvestmentModule,
     EventEmitterModule.forRoot({
       wildcard: true,
     }),
