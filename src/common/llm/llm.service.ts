@@ -7,6 +7,7 @@ import OpenAI, {
   InternalServerError,
   RateLimitError,
 } from 'openai';
+import type { ChatCompletion } from 'openai/resources/chat/completions';
 
 export interface LlmCompletionOptions {
   systemPrompt: string;
@@ -75,7 +76,7 @@ export class LlmService {
     } = options;
 
     try {
-      const response: any = await this.callWithRetry(() =>
+      const response: ChatCompletion = await this.callWithRetry(() =>
         this.client.chat.completions.create({
           model: this.defaultModel,
           messages: [
@@ -101,7 +102,7 @@ export class LlmService {
         return fallback;
       }
       throw new Error('LLM returned empty content');
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (fallback !== undefined) {
         this.logger.error(`LLM completion failed: ${String(error)}`);
         return fallback;
@@ -111,12 +112,12 @@ export class LlmService {
   }
 
   private async callWithRetry<T>(operation: () => Promise<T>): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= this.retry.maxAttempts; attempt++) {
       try {
         return await operation();
-      } catch (error: any) {
+      } catch (error: unknown) {
         lastError = error;
 
         if (!this.isRetryable(error) || attempt === this.retry.maxAttempts) {

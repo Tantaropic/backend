@@ -345,6 +345,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
       events as unknown as EventEmitter2,
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await service.onWithdrawalRequested(buildWithdrawalPayload());
 
     // Both positions decremented under OCC.
@@ -410,6 +411,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
       events as unknown as EventEmitter2,
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await service.onWithdrawalRequested(
       buildWithdrawalPayload({
         sales: [
@@ -447,6 +449,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
     );
 
     await expect(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       service.onWithdrawalRequested(buildWithdrawalPayload()),
     ).rejects.toThrow(/position version mismatch/i);
     expect(events.emit).not.toHaveBeenCalled();
@@ -461,6 +464,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
     );
 
     await expect(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       service.onWithdrawalRequested(buildWithdrawalPayload()),
     ).rejects.toThrow(/missing wallet position/i);
     expect(events.emit).not.toHaveBeenCalled();
@@ -485,6 +489,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
     );
 
     await expect(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       service.onWithdrawalRequested(
         buildWithdrawalPayload({
           sales: [
@@ -510,6 +515,7 @@ describe('FeeEngineService - onWithdrawalRequested (PROFIT_FEE)', () => {
     );
 
     await expect(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       service.onWithdrawalRequested(buildWithdrawalPayload()),
     ).resolves.toBeUndefined();
     expect(events.emit).toHaveBeenCalledTimes(1);
