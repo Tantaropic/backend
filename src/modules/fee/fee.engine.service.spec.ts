@@ -58,13 +58,13 @@ const buildPrismaMock = (overrides?: {
 };
 
 const buildPayload = (
-  o: Partial<EventsPayloads.RoundupDebitedEventPayload> = {},
-): EventsPayloads.RoundupDebitedEventPayload => ({
+  o: Partial<EventsPayloads.RoundUpCompletedEventPayload> = {},
+): EventsPayloads.RoundUpCompletedEventPayload => ({
   userId: 'user-1',
   walletId: 'wallet-1',
   transactionEventId: 'txev-1',
   transactionId: 'tx-1',
-  grossAmount: Money.fromMinorUnit(1000n, Currency.EGP),
+  grossRoundUpAmount: Money.fromMinorUnit(1000n, Currency.EGP),
   idempotencyKey: 'rd-key-1',
   ...o,
 });

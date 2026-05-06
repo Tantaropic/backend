@@ -2,9 +2,10 @@
  * Integration test: exercises AiInsightsService against the REAL LlmService
  * (live Azure GitHub Models endpoint). Only the DB layer is stubbed.
  *
- * Skipped automatically when GITHUB_TOKEN is not set so unit-test CI stays green.
+ * Skipped by default so unit-test CI stays green and does not depend on live
+ * model quota. Opt in explicitly with RUN_LIVE_LLM_TESTS=true.
  * Run locally with:
- *   npx jest src/modules/ai-insights/ai-insights.integration.spec.ts --runInBand
+ *   $env:RUN_LIVE_LLM_TESTS='true'; npx jest src/modules/ai-insights/ai-insights.integration.spec.ts --runInBand
  */
 import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
@@ -20,8 +21,10 @@ import type {
   WalletBalanceReconciledEventPayload,
 } from '../../common/events/event-payload';
 
-const hasToken = Boolean(process.env.GITHUB_TOKEN);
-const describeIfLive = hasToken ? describe : describe.skip;
+const shouldRunLiveLlmTests =
+  process.env.RUN_LIVE_LLM_TESTS === 'true' &&
+  Boolean(process.env.GITHUB_TOKEN);
+const describeIfLive = shouldRunLiveLlmTests ? describe : describe.skip;
 
 describeIfLive('AiInsightsService (live LLM integration)', () => {
   jest.setTimeout(60_000);

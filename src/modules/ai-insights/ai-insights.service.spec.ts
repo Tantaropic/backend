@@ -114,7 +114,7 @@ describe('AiInsightsService', () => {
         expect.objectContaining({
           userId: 'user-1',
           message: 'وفر يا صديقي',
-          transactionEventId: 'txn-1',
+          transactionEventId: 'evt-1',
           idempotencyKey: 'ai-insight-idem-1',
           triggerTag: 'coffee_shop',
         }),
@@ -129,12 +129,12 @@ describe('AiInsightsService', () => {
       );
     });
 
-    it('falls back to transactionId when idempotencyKey is missing', async () => {
+    it('falls back to transactionEventId when idempotencyKey is missing', async () => {
       await service.handleTransactionWebhook(
         buildPayload({ idempotencyKey: undefined as unknown as string }),
       );
       expect(repo.saveInsight).toHaveBeenCalledWith(
-        expect.objectContaining({ idempotencyKey: 'ai-insight-txn-1' }),
+        expect.objectContaining({ idempotencyKey: 'ai-insight-evt-1' }),
       );
     });
 

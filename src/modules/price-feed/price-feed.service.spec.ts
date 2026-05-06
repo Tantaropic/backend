@@ -8,6 +8,7 @@ import { EventType } from '../../common/events';
 import type { IExchangeProvider } from '../../common/interfaces/exchange-provider.interface';
 
 type ExchangeMock = { getLatestPrice: jest.Mock };
+type MockExchangeMock = { setPrice: jest.Mock };
 
 const buildConfig = (overrides: Record<string, string> = {}): ConfigService => {
   const values: Record<string, string> = {
@@ -25,6 +26,7 @@ const buildConfig = (overrides: Record<string, string> = {}): ConfigService => {
 
 describe('PriceFeedService', () => {
   let exchange: ExchangeMock;
+  let mockExchange: MockExchangeMock;
   let emitter: EventEmitter2;
   let emitSpy: jest.SpyInstance;
 
@@ -33,6 +35,9 @@ describe('PriceFeedService', () => {
   beforeEach(() => {
     exchange = {
       getLatestPrice: jest.fn(),
+    };
+    mockExchange = {
+      setPrice: jest.fn(),
     };
     emitter = new EventEmitter2();
     emitSpy = jest.spyOn(emitter, 'emit');
@@ -46,6 +51,7 @@ describe('PriceFeedService', () => {
     new PriceFeedService(
       exchange as unknown as IExchangeProvider,
       emitter,
+      mockExchange as never,
       config,
     );
 
