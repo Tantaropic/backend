@@ -18,6 +18,8 @@ import { RoundUpEngineModule } from '../modules/roundup-engine/roundup-engine.mo
 import { RealtimeModule } from '../modules/realtime/realtime.module';
 import { PriceFeedModule } from '../modules/price-feed/price-feed.module';
 import { RealtimeCommonModule } from '../common/realtime/realtime-common.module';
+import { FeeModule } from '../modules/fee/fee.module';
+import { InvestmentAllocationModule } from '../modules/investment-allocation/investment-allocation.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { RealtimeCommonModule } from '../common/realtime/realtime-common.module'
     AiInsightsModule,
     RoundUpEngineModule,
     RealtimeModule,
+    FeeModule,
+    InvestmentAllocationModule,
     EventEmitterModule.forRoot({
       wildcard: true,
       verboseMemoryLeak: true,

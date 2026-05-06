@@ -1,7 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AssetClass, Currency } from '../../common/enums';
-import { CurrencyRegistry } from '../../common/constants/currency.registry';
 import { ASSET_UNIT_PRECISION } from '../../common/constants';
 import {
   BuyAssetDto,
@@ -28,7 +27,7 @@ export class MockExchangeService {
     [
       AssetClass.GOLD,
       {
-        currPrice: 450_00n,
+        currPrice: 72_00n,
         currency: Currency.EGP,
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       },
@@ -36,7 +35,7 @@ export class MockExchangeService {
     [
       AssetClass.INDEX_FUND,
       {
-        currPrice: 120_00n,
+        currPrice: 16_00n,
         currency: Currency.EGP,
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       },
@@ -44,7 +43,7 @@ export class MockExchangeService {
     [
       AssetClass.HIGH_RISK,
       {
-        currPrice: 85_00n,
+        currPrice: 20_00n,
         currency: Currency.EGP,
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       },
@@ -52,33 +51,17 @@ export class MockExchangeService {
   ]);
 
   /**
-   * Calculates the dynamically growing price based on the compound growth formula:
-   * P(t) = P0 * (1 + APY)^t_years
+   * Returns the price last set by PriceFeedService.
+   * No jitter applied here — PriceFeed is the single source of truth.
    */
   private getCurrentPrice(assetClass: AssetClass): bigint {
     const entry = this.prices.get(assetClass);
-    if (!entry) return 0n;
-
-    const now = new Date();
-    const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
-    const tYears = (now.getTime() - entry.updatedAt.getTime()) / msPerYear;
-
-    // 40% APY
-    const currentPrice =
-      entry.currPrice * BigInt(Math.round(Math.pow(1.4, Math.max(0, tYears))));
-
-    this.prices.set(assetClass, {
-      currPrice: currentPrice,
-      updatedAt: now,
-      currency: Currency.EGP,
-    });
-
-    return currentPrice;
+    return entry?.currPrice ?? 0n;
   }
 
   /**
    * Returns current prices for all tradeable asset classes.
-   * @returns Array of asset prices in smallest currency unit.
+   * Reflects the latest values pushed by PriceFeedService.
    */
   getPrices(): AssetPriceDto[] {
     const result: AssetPriceDto[] = [];
@@ -87,8 +70,8 @@ export class MockExchangeService {
       result.push({
         assetClass,
         pricePerUnit: entry.currPrice,
-        currency: entry.currency,
-        updatedAt: new Date().toISOString(),
+        currency: Currency.EGP,
+        updatedAt: entry.updatedAt.toISOString(),
       });
     }
 
@@ -101,8 +84,8 @@ export class MockExchangeService {
    *
    * Formula: units = (amountInMinor * ASSET_UNIT_PRECISION) / pricePerUnit
    *
-   * Example with 0.70 EGP on Gold (450 EGP/unit):
-   *   70 piasters * 1e8 / 45000 = 155,555 internal units = 0.00155555 grams
+   * Example with 0.70 EGP on Gold (260 EGP/unit):
+   *   70 piasters * 1e8 / 26000 = 269,230 internal units = 0.00269230 grams
    *
    * @param dto - The buy order with asset class, amount (major units), and idempotency key.
    * @returns Trade confirmation with fractional units and execution price.
@@ -122,10 +105,9 @@ export class MockExchangeService {
     }
     const currentPricePerUnit = this.getCurrentPrice(dto.assetClass);
 
-    const multiplier = CurrencyRegistry[dto.currency].multiplier;
-    const amountInMinorUnits = dto.amount * multiplier;
-    const units =
-      (amountInMinorUnits * ASSET_UNIT_PRECISION) / currentPricePerUnit;
+    // Off-the-wire BigInts arrive as strings (no class-validator on this DTO).
+    const amountMinor = BigInt(dto.amount);
+    const units = (amountMinor * ASSET_UNIT_PRECISION) / currentPricePerUnit;
     const totalCost = (units * currentPricePerUnit) / ASSET_UNIT_PRECISION;
 
     const response: TradeResponseDto = {
@@ -168,21 +150,21 @@ export class MockExchangeService {
     }
     const currentPricePerUnit = this.getCurrentPrice(dto.assetClass);
 
-    const totalProceeds =
-      (dto.units * currentPricePerUnit) / ASSET_UNIT_PRECISION;
+    const units = BigInt(dto.units);
+    const totalProceeds = (units * currentPricePerUnit) / ASSET_UNIT_PRECISION;
 
     const response: TradeResponseDto = {
       success: true,
       tradeId: randomUUID(),
       assetClass: dto.assetClass,
-      units: dto.units,
+      units: units,
       executionPrice: currentPricePerUnit,
       totalAmount: totalProceeds,
     };
 
     this.idempotencyStore.set(dto.idempotencyKey, response);
     this.logger.log(
-      `SELL ${String(dto.assetClass)}: ${dto.units} units @ ${currentPricePerUnit} = ${totalProceeds} piasters`,
+      `SELL ${String(dto.assetClass)}: ${units} units @ ${currentPricePerUnit} = ${totalProceeds} piasters`,
     );
 
     return response;

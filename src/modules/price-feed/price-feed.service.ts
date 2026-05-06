@@ -20,6 +20,7 @@ import { EventType } from '../../common/events';
 import type { AssetPriceChangedEventPayload } from '../../common/events/event-payload';
 import type { PriceTick } from './dtos/price-tick.dto';
 import { TRADEABLE_ASSETS } from './constants/tradeable-assets.constant';
+import { MockExchangeService } from '../../external-api/mock-exchange/mock-exchange.service';
 
 @Injectable()
 export class PriceFeedService implements OnApplicationBootstrap {
@@ -33,6 +34,7 @@ export class PriceFeedService implements OnApplicationBootstrap {
   constructor(
     @Inject(I_EXCHANGE_PROVIDER) private readonly exchange: IExchangeProvider,
     private readonly events: EventEmitter2,
+    private readonly mockExchange: MockExchangeService,
     config: ConfigService,
   ) {
     this.enabled = config.get<string>('PRICE_FEED_ENABLED', 'true') !== 'false';
@@ -135,6 +137,10 @@ export class PriceFeedService implements OnApplicationBootstrap {
       updatedAt: new Date(),
     };
     this.cache.set(asset, tick);
+
+    // Push the new price into the mock-exchange so BUY orders execute at the
+    // same number the FE sees. Single source of truth.
+    this.mockExchange.setPrice(asset, jittered.amount);
 
     const payload: AssetPriceChangedEventPayload = {
       asset,

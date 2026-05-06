@@ -22,13 +22,13 @@ export class FeeEngineService {
    */
   @OnEvent(EventType.SystemEventType.WALLET_FUNDS_ROUNDUP)
   async onRoundupDebited(
-    payload: EventsPayloads.RoundupDebitedEventPayload,
+    payload: EventsPayloads.RoundUpCompletedEventPayload,
   ): Promise<void> {
     const {
       userId,
       walletId,
       transactionEventId,
-      grossAmount,
+      grossRoundUpAmount: grossAmount,
       idempotencyKey,
     } = payload;
     const feeIdempotencyKey = `fund-fee:${idempotencyKey}`;
@@ -47,42 +47,46 @@ export class FeeEngineService {
 
     // Atomic write: deduct fee from wallet (OCC), bump AUM by net, post ledger entry.
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const walletUpdate = await tx.digitalWallet.updateMany({
-          where: { id: walletId, version: wallet.version },
-          data: {
-            fiatBalance: { decrement: fee.amount },
-            version: { increment: 1 },
-          },
-        });
-        if (walletUpdate.count === 0) {
-          throw new Error('Concurrency conflict: wallet version mismatch');
-        }
+      await this.prisma.$transaction(
+        async (tx) => {
+          const walletUpdate = await tx.digitalWallet.updateMany({
+            where: { id: walletId, version: wallet.version },
+            data: {
+              fiatBalance: { decrement: fee.amount },
+              version: { increment: 1 },
+            },
+          });
+          if (walletUpdate.count === 0) {
+            throw new Error('Concurrency conflict: wallet version mismatch');
+          }
 
-        const profileUpdate = await tx.profile.updateMany({
-          where: { id: wallet.profileId, version: wallet.profile.version },
-          data: {
-            aum: { increment: net.amount },
-            version: { increment: 1 },
-          },
-        });
-        if (profileUpdate.count === 0) {
-          throw new Error('Concurrency conflict: profile version mismatch');
-        }
+          const profileUpdate = await tx.profile.updateMany({
+            where: { id: wallet.profileId, version: wallet.profile.version },
+            data: {
+              aum: { increment: net.amount },
+              version: { increment: 1 },
+            },
+          });
+          if (profileUpdate.count === 0) {
+            throw new Error('Concurrency conflict: profile version mismatch');
+          }
 
-        await tx.ledgerEntry.create({
-          data: {
-            userId,
-            walletId,
-            type: LedgerEntryType.FUND_FEE,
-            amount: fee.amount,
-            currency: fee.currency,
-            transactionEventId,
-            idempotencyKey: feeIdempotencyKey,
-            note: `FUND_FEE ${bps}bps on gross ${grossAmount.amount}`,
-          },
-        });
-      });
+          await tx.ledgerEntry.create({
+            data: {
+              userId,
+              walletId,
+              type: LedgerEntryType.FUND_FEE,
+              amount: fee.amount,
+              currency: fee.currency,
+              transactionEventId,
+              idempotencyKey: feeIdempotencyKey,
+              note: `FUND_FEE ${bps}bps on gross ${grossAmount.amount}`,
+            },
+          });
+        },
+        // Neon pooler can be slow on cold starts; default 5s is too tight.
+        { maxWait: 15_000, timeout: 20_000 },
+      );
     } catch (err) {
       // Unique-constraint hit on idempotencyKey = event replay; swallow & continue.
       if (this.isDuplicateIdempotencyKey(err)) {

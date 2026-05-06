@@ -121,7 +121,13 @@ export class RoundUpEngineService {
 
     // ─── 3. Atomic Updates: Ledger + TransactionEvent + Wallet Balance (OCC) ───
     await this.prisma.$transaction(async (tx) => {
-      // 3.1. Write ROUNDUP ledger entry
+      // 3.1. Write ROUNDUP ledger entry — encode metadata in `note` so the FE
+      // can show the original purchase amount + merchant alongside the round-up.
+      const noteMeta = JSON.stringify({
+        originalAmount: money.amount.toString(),
+        roundedAmount: (money.amount + roundUpMoney.amount).toString(),
+        merchantTag: merchantTag ?? null,
+      });
       await this.ledgerRepo.saveEntry(
         {
           userId,
@@ -129,7 +135,7 @@ export class RoundUpEngineService {
           type: LedgerEntryType.ROUNDUP,
           transactionEventId,
           idempotencyKey: debitResult.idempotencyKey,
-          note: `Round-up from ${merchantTag ?? 'unknown'} transaction`,
+          note: noteMeta,
         },
         roundUpMoney,
         tx,
@@ -153,6 +159,7 @@ export class RoundUpEngineService {
     const roundUpEvent: EventsPayloads.RoundUpCompletedEventPayload = {
       timestamp: new Date(),
       userId,
+      walletId: wallet.id,
       transactionId,
       transactionEventId,
       grossRoundUpAmount: roundUpMoney,

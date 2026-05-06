@@ -8,7 +8,6 @@ import {
   ITradeResult,
 } from '../../common/interfaces/exchange-provider.interface';
 import { HttpClientService } from '../../common/http';
-import { StringifiedJSON, serialize } from '../../common/helpers/json-helper';
 import { BuyAssetRequestDto } from './external-dtos/buy.dto';
 import { SellAssetRequestDto } from './external-dtos/sell.dto';
 import { TradeResponseDto } from './external-dtos/trade.dto';
@@ -69,24 +68,25 @@ export class ExchangeIntegrationService implements IExchangeProvider {
       idempotencyKey: request.idempotencyKey,
     };
 
-    const payloadStringified = serialize<BuyAssetRequestDto>(externalPayload);
-
     try {
+      // HttpClientService.post() handles BigInt serialization internally —
+      // pre-serializing here would double-stringify and produce invalid JSON.
       const response = await this.http.post<
-        StringifiedJSON<BuyAssetRequestDto>,
+        BuyAssetRequestDto,
         TradeResponseDto
-      >(this.exchangeBuyRoute, payloadStringified);
+      >(this.exchangeBuyRoute, externalPayload);
 
       return {
         success: response.success,
         message: response.message,
         transactionId: response.tradeId,
-        executedUnits: response.units,
+        executedUnits:
+          response.units !== undefined ? BigInt(response.units) : undefined,
         executionPrice:
           response.executionPrice !== undefined &&
           request.totalCost.currency !== undefined
             ? Money.fromMinorUnit(
-                response.executionPrice,
+                BigInt(response.executionPrice),
                 request.totalCost.currency,
               )
             : undefined,
@@ -94,7 +94,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
           response.totalAmount !== undefined &&
           request.totalCost.currency !== undefined
             ? Money.fromMinorUnit(
-                response.totalAmount,
+                BigInt(response.totalAmount),
                 request.totalCost.currency,
               )
             : undefined,
@@ -119,24 +119,23 @@ export class ExchangeIntegrationService implements IExchangeProvider {
       idempotencyKey: request.idempotencyKey,
     };
 
-    const payloadStringified = serialize<SellAssetRequestDto>(externalPayload);
-
     try {
       const response = await this.http.post<
-        StringifiedJSON<SellAssetRequestDto>,
+        SellAssetRequestDto,
         TradeResponseDto
-      >(this.exchangeSellRoute, payloadStringified);
+      >(this.exchangeSellRoute, externalPayload);
 
       return {
         success: response.success,
         message: response.message,
         transactionId: response.tradeId,
-        executedUnits: response.units,
+        executedUnits:
+          response.units !== undefined ? BigInt(response.units) : undefined,
         executionPrice:
           response.executionPrice !== undefined &&
           request.totalCost.currency !== undefined
             ? Money.fromMinorUnit(
-                response.executionPrice,
+                BigInt(response.executionPrice),
                 request.totalCost.currency,
               )
             : undefined,
@@ -144,7 +143,7 @@ export class ExchangeIntegrationService implements IExchangeProvider {
           response.totalAmount !== undefined &&
           request.totalCost.currency !== undefined
             ? Money.fromMinorUnit(
-                response.totalAmount,
+                BigInt(response.totalAmount),
                 request.totalCost.currency,
               )
             : undefined,

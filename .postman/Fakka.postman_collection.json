@@ -570,6 +570,141 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Price Feed",
+      "description": "Live market prices polled from MockExchange every ~10s, cached in memory with optional ±0.5% jitter, and broadcast on the `prices` SSE channel.",
+      "item": [
+        {
+          "name": "Get All Cached Prices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prices"
+              ]
+            },
+            "description": "Returns the current cached snapshot of every tradeable asset price. Used by the frontend on first paint before the SSE stream produces a tick.\n\n### Response Body:\n- **data** (Array): One entry per asset.\n  - **asset** (Enum): `GOLD`, `INDEX_FUND`, or `HIGH_RISK`.\n  - **pricePerUnit** (string): Major-unit decimal, e.g. `\"452.25\"`.\n  - **currency** (Enum): e.g. `EGP`.\n  - **deltaBps** (number): Signed change vs the previous tick, in basis points. `0` on first tick.\n  - **updatedAt** (ISO Date): When this tick was cached."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Asset Price",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prices/GOLD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prices",
+                "GOLD"
+              ]
+            },
+            "description": "Returns the current cached price for a single asset. Returns 404 if the asset is unknown or the cache hasn't been seeded yet.\n\n### Path Parameter:\n- **asset** (Enum): `GOLD`, `INDEX_FUND`, or `HIGH_RISK`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SSE Realtime",
+      "description": "Server-Sent Events. Long-lived `text/event-stream` connections — open in a browser via `EventSource` or in CLI with `curl -N`.\n\nEnvelope shape pushed on every event:\n```json\n{\n  \"channel\": \"wallet\" | \"transactions\" | \"ai-insights\" | \"prices\" | \"system\",\n  \"type\": \"<SystemEventType>\",\n  \"userId\": \"<uuid> | null\",\n  \"data\": { ... },\n  \"ts\": \"2026-05-01T10:23:45.123Z\"\n}\n```\nA `ping` event is sent every 15s as a heartbeat (use `addEventListener('ping', ...)` to ignore it).",
+      "item": [
+        {
+          "name": "Stream — All Channels (per user)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sse/stream?userId={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sse",
+                "stream"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "UUID of the subscribed user. Required."
+                }
+              ]
+            },
+            "description": "Multiplexed stream — subscribes the user to all four channels: `transactions`, `wallet`, `ai-insights`, and `prices` (global)."
+          },
+          "response": []
+        },
+        {
+          "name": "Stream — Wallet Only (per user)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sse/wallet?userId={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sse",
+                "wallet"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "UUID of the subscribed user. Required."
+                }
+              ]
+            },
+            "description": "Wallet-only stream for the dashboard wallet widget. Receives `wallet.balance_reconciled`, `trade.order_executed`, `wallet.value_projected`, `roundup.debited`, and `withdrawal.fee_applied` events."
+          },
+          "response": []
+        },
+        {
+          "name": "Stream — Prices (global, no auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sse/prices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sse",
+                "prices"
+              ]
+            },
+            "description": "Global price-tick stream. No authentication. Pushes `exchange.price_changed` envelopes every ~10s with `{ asset, price, currency, deltaBps, previousPrice }`."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

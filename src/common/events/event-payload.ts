@@ -28,6 +28,7 @@ export type TransactionWebhookReceivedEventPayload = {
 
 // Round-Up events payload.
 export type RoundUpCompletedEventPayload = {
+  walletId: string;
   transactionEventId: string;
   grossRoundUpAmount: Money;
   merchantTag?: MerchantTag;
@@ -81,7 +82,8 @@ export type RoundupDebitedEventPayload = {
 export type FundsReadyForInvestmentEventPayload = {
   userId: string;
   walletId: string;
-  transactionEventId: string;
+  /** Optional — deposits don't have a TransactionEvent FK. */
+  transactionEventId?: string;
   netAmount: Money;
   idempotencyKey: string;
 } & BaseEventPayload;

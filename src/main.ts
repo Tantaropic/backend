@@ -2,9 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app/app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+
+  const frontendUrls = config.get<string>('FRONTEND_URL');
+  app.enableCors({
+    origin: frontendUrls ? frontendUrls.split(',').map((s) => s.trim()) : true,
+    credentials: true,
+  });
 
   // ─── Global Validation Pipe ───
   app.useGlobalPipes(
@@ -19,11 +27,10 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api/v1');
-
-  // ─── Global Exception Filter ───
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  await app.listen(process.env.PORT || 3000);
+  const port = config.get<number>('PORT') || 3000;
+  await app.listen(port);
 }
 
 bootstrap()

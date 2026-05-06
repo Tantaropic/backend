@@ -33,13 +33,13 @@ export class AiInsightsService {
   async handleTransactionWebhook(
     payload: TransactionWebhookReceivedEventPayload,
   ): Promise<void> {
-    const { userId, merchantTag, transactionId, money, idempotencyKey } =
+    const { userId, merchantTag, transactionEventId, money, idempotencyKey } =
       payload;
 
     if (!userId || !merchantTag) return;
     if (!NUDGE_WORTHY_TAGS.includes(merchantTag)) return;
 
-    const insightKey = `ai-insight-${idempotencyKey ?? transactionId}`;
+    const insightKey = `ai-insight-${idempotencyKey ?? transactionEventId}`;
 
     this.logger.log(
       `Generating spending nudge for user ${userId} (tag: ${merchantTag})`,
@@ -58,7 +58,7 @@ export class AiInsightsService {
       const insight = await this.repository.saveInsight({
         userId,
         message,
-        transactionEventId: transactionId,
+        transactionEventId,
         idempotencyKey: insightKey,
         triggerTag: merchantTag,
       });
@@ -85,7 +85,7 @@ export class AiInsightsService {
   async handleMilestoneCelebration(
     payload: WalletBalanceReconciledEventPayload,
   ): Promise<void> {
-    const { userId, transactionId, money } = payload;
+    const { userId, money } = payload;
     if (!userId) return;
 
     const currentBalance = Number(money.toMajorUnit().amount);
@@ -120,7 +120,7 @@ export class AiInsightsService {
       const insight = await this.repository.saveInsight({
         userId,
         message,
-        transactionEventId: transactionId,
+        // Milestone insights are not tied to a specific transaction event.
         idempotencyKey: insightKey,
         triggerTag: `milestone_${String(crossedMilestone)}`,
       });
