@@ -130,7 +130,9 @@ export class UsersController {
     @Body() body: { amount: number },
   ): Promise<IApiResponse<any>> {
     const amount = Number(body.amount);
-    const amountBigInt = Number.isFinite(amount) ? BigInt(Math.round(amount)) : 0n;
+    const amountBigInt = Number.isFinite(amount)
+      ? BigInt(Math.round(amount))
+      : 0n;
     const wallet = await this.usersService.simulateWithdraw(id, amountBigInt);
     return ok(
       JsonHelper.replaceBigInts(wallet),
