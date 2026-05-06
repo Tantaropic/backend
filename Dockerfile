@@ -23,4 +23,4 @@ COPY --from=build /app/prisma ./prisma
 
 EXPOSE 3000
 
-CMD ["node", "dist/src/main"]
+CMD ["sh", "-c", "npm run db:migrate:prod && node dist/src/main"]
