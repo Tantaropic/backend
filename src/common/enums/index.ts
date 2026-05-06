@@ -6,4 +6,5 @@ export {
   AssetClass,
   RiskProfile,
   Currency,
+  GoalStatus,
 } from '@prisma/client';

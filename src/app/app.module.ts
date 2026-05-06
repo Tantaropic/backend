@@ -20,6 +20,7 @@ import { PriceFeedModule } from '../modules/price-feed/price-feed.module';
 import { RealtimeCommonModule } from '../common/realtime/realtime-common.module';
 import { FeeModule } from '../modules/fee/fee.module';
 import { InvestmentAllocationModule } from '../modules/investment-allocation/investment-allocation.module';
+import { GoalsModule } from '../modules/goals/goals.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { InvestmentAllocationModule } from '../modules/investment-allocation/inv
     AiInsightsModule,
     RoundUpEngineModule,
     RealtimeModule,
+    GoalsModule,
     FeeModule,
     InvestmentAllocationModule,
     EventEmitterModule.forRoot({

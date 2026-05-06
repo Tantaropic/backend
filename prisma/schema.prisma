@@ -41,6 +41,12 @@ enum Currency {
   EGP
 }
 
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 // ─── Profile ────────────────────────────────────────────────────────────────
 // A profile groups one or more users (family, friends).
 // The shared DigitalWallet belongs to the Profile, not individual users.
@@ -81,9 +87,31 @@ model User {
   transactions  TransactionEvent[]
   ledgerEntries LedgerEntry[]
   aiInsights    AiInsight[]
+  goals         Goal[]
 
   @@index([profileId])
   @@map("users")
+}
+
+model Goal {
+  id             String     @id @default(uuid())
+  userId         String
+  title          String
+  emoji          String     @default("target")
+  targetAmount   BigInt
+  targetDate     DateTime?
+  monthlyRoundup BigInt     @default(0)
+  color          String     @default("#2d7a4f")
+  status         GoalStatus @default(ACTIVE)
+  sortOrder      Int        @default(0)
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("goals")
 }
 
 // ─── TransactionEvent ───────────────────────────────────────────────────────
