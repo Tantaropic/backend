@@ -57,7 +57,7 @@ export class GoalRepository extends BaseRepository<Goal> {
     return (last?.sortOrder ?? -1) + 1;
   }
 
-  async createForUser(
+  createForUser(
     userId: string,
     data: CreateGoalData,
     tx: GoalWriteTransaction = this.prisma,
@@ -65,7 +65,7 @@ export class GoalRepository extends BaseRepository<Goal> {
     return tx.goal.create({ data: { ...data, userId } });
   }
 
-  async updateForUser(
+  updateForUser(
     userId: string,
     goalId: string,
     data: Prisma.GoalUpdateInput,
@@ -77,7 +77,7 @@ export class GoalRepository extends BaseRepository<Goal> {
     });
   }
 
-  async deleteForUser(
+  deleteForUser(
     userId: string,
     goalId: string,
     tx: GoalWriteTransaction = this.prisma,
@@ -85,10 +85,7 @@ export class GoalRepository extends BaseRepository<Goal> {
     return tx.goal.delete({ where: { id: goalId, userId } });
   }
 
-  async firstActiveGoal(
-    userId: string,
-    tx: GoalWriteTransaction = this.prisma,
-  ) {
+  firstActiveGoal(userId: string, tx: GoalWriteTransaction = this.prisma) {
     return tx.goal.findFirst({
       where: { userId, status: GoalStatus.ACTIVE },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],

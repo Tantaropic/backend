@@ -37,6 +37,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 output logAnalyticsCustomerId string = logAnalytics.properties.customerId
 
 @description('Log Analytics shared key for Container Apps Environment')
+@secure()
 output logAnalyticsSharedKey string = logAnalytics.listKeys().primarySharedKey
 
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

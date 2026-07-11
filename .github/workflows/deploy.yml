@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  AZURE_RESOURCE_GROUP: tantaropic-rg
+  CONTAINER_APP_NAME: tantaropic-api
+  ACR_NAME: tantaropicprodacr
+  IMAGE_REPOSITORY: tantaropic-api
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,10 +24,37 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy to Container Apps
-        uses: azure/container-apps-deploy-action@v1
-        with:
-          appSourcePath: ${{ github.workspace }}
-          resourceGroup: tantaropic-rg
-          containerAppName: tantaropic-api
-          acrName: ca07fe8ab50eacr
+      - name: Install Container Apps CLI extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Build and push immutable image
+        run: >-
+          az acr build
+          --registry "$ACR_NAME"
+          --image "$IMAGE_REPOSITORY:${GITHUB_SHA}"
+          .
+
+      - name: Deploy image with managed identity pull
+        run: |
+          REGISTRY_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)
+          az containerapp update \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$CONTAINER_APP_NAME" \
+            --image "$REGISTRY_SERVER/$IMAGE_REPOSITORY:${GITHUB_SHA}" \
+            --min-replicas 1 \
+            --max-replicas 1
+
+      - name: Verify deployment
+        run: |
+          FQDN=$(az containerapp show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$CONTAINER_APP_NAME" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          curl --fail --show-error \
+            --retry 12 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "https://$FQDN/api/v1"

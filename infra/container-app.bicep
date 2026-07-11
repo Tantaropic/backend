@@ -17,6 +17,12 @@ param logAnalyticsCustomerId string
 @secure()
 param logAnalyticsSharedKey string
 
+@description('Azure Container Registry login server')
+param containerRegistryServer string
+
+@description('Resource ID of the managed identity used to pull container images')
+param containerRegistryIdentityResourceId string
+
 @description('Neon PostgreSQL connection string')
 @secure()
 param databaseUrl string
@@ -49,66 +55,108 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 // ========================================
 // Container App
 // ========================================
-resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
+module containerApp 'br/public:avm/res/app/container-app:0.22.0' = {
   name: '${projectName}-api'
-  location: location
-  properties: {
-    managedEnvironmentId: environment.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: targetPort
-        transport: 'http'
-        allowInsecure: false
+  params: {
+    name: '${projectName}-api'
+    location: location
+    environmentResourceId: environment.id
+    containers: [
+      {
+        name: '${projectName}-api'
+        image: containerImage
+        resources: {
+          cpu: json('0.25')
+          memory: '0.5Gi'
+        }
+        env: [
+          {
+            name: 'DATABASE_URL'
+            secretRef: 'db-url'
+          }
+          {
+            name: 'GITHUB_TOKEN'
+            secretRef: 'github-token'
+          }
+          {
+            name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+            secretRef: 'appinsights-conn'
+          }
+          {
+            name: 'PORT'
+            value: '${targetPort}'
+          }
+          {
+            name: 'BASE_URL'
+            value: 'http://localhost:${targetPort}/api/v1'
+          }
+        ]
+        probes: [
+          {
+            type: 'Startup'
+            tcpSocket: {
+              port: targetPort
+            }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+            timeoutSeconds: 3
+          }
+          {
+            type: 'Liveness'
+            tcpSocket: {
+              port: targetPort
+            }
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 3
+          }
+          {
+            type: 'Readiness'
+            tcpSocket: {
+              port: targetPort
+            }
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          }
+        ]
       }
-      secrets: [
-        {
-          name: 'db-url'
-          value: databaseUrl
-        }
-        {
-          name: 'github-token'
-          value: githubToken
-        }
-        {
-          name: 'appinsights-conn'
-          value: appInsightsConnectionString
-        }
+    ]
+    ingressExternal: true
+    ingressTargetPort: targetPort
+    ingressTransport: 'http'
+    ingressAllowInsecure: false
+    managedIdentities: {
+      userAssignedResourceIds: [
+        containerRegistryIdentityResourceId
       ]
     }
-    template: {
-      containers: [
-        {
-          name: '${projectName}-api'
-          image: containerImage
-          resources: {
-            cpu: json('0.25')
-            memory: '0.5Gi'
-          }
-          env: [
-            {
-              name: 'DATABASE_URL'
-              secretRef: 'db-url'
-            }
-            {
-              name: 'GITHUB_TOKEN'
-              secretRef: 'github-token'
-            }
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              secretRef: 'appinsights-conn'
-            }
-            {
-              name: 'PORT'
-              value: '${targetPort}'
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 0
-        maxReplicas: 1
+    registries: [
+      {
+        server: containerRegistryServer
+        identity: containerRegistryIdentityResourceId
       }
+    ]
+    secrets: [
+      {
+        name: 'db-url'
+        value: databaseUrl
+      }
+      {
+        name: 'github-token'
+        value: githubToken
+      }
+      {
+        name: 'appinsights-conn'
+        value: appInsightsConnectionString
+      }
+    ]
+    activeRevisionsMode: 'Single'
+    maxInactiveRevisions: 3
+    scaleSettings: {
+      minReplicas: 1
+      maxReplicas: 1
     }
   }
 }
@@ -116,5 +164,5 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 // ========================================
 // Outputs
 // ========================================
-output fqdn string = containerApp.properties.configuration.ingress.fqdn
-output name string = containerApp.name
+output fqdn string = containerApp.outputs.fqdn
+output name string = containerApp.outputs.name

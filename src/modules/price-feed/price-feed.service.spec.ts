@@ -55,6 +55,28 @@ describe('PriceFeedService', () => {
       config,
     );
 
+  describe('application bootstrap', () => {
+    it('does not block startup while the initial prices are pending', () => {
+      exchange.getLatestPrice.mockReturnValue(new Promise(() => undefined));
+
+      const service = newService();
+      const result = service.onApplicationBootstrap();
+
+      expect(result).toBeUndefined();
+      expect(exchange.getLatestPrice).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not seed when PRICE_FEED_ENABLED=false', () => {
+      const service = newService(
+        buildConfig({ PRICE_FEED_ENABLED: 'false' }),
+      );
+
+      service.onApplicationBootstrap();
+
+      expect(exchange.getLatestPrice).not.toHaveBeenCalled();
+    });
+  });
+
   describe('tick (lazy seed)', () => {
     it('emits ASSET_PRICE_CHANGED for every asset on first tick', async () => {
       exchange.getLatestPrice.mockImplementation((asset: AssetClass) => {

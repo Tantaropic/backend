@@ -45,12 +45,16 @@ export class PriceFeedService implements OnApplicationBootstrap {
   }
 
   // ── Bootstrap: seed cache with raw (no jitter) prices ───────────────────
-  async onApplicationBootstrap(): Promise<void> {
+  onApplicationBootstrap(): void {
     if (!this.enabled) {
       this.logger.warn('Price feed disabled (PRICE_FEED_ENABLED=false)');
       return;
     }
-    await this.seed();
+
+    // The mock exchange is served by this application. Do not await the HTTP
+    // seed here: Nest invokes this hook before the HTTP listener is ready,
+    // which would deadlock startup while the service calls itself.
+    void this.seed();
   }
 
   // ── Public read API (used by controller + WalletProjection later) ───────

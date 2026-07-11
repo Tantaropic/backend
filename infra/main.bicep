@@ -9,6 +9,9 @@ param projectName string = 'tantaropic'
 @description('Container image to deploy')
 param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
+@description('Globally unique Azure Container Registry name')
+param containerRegistryName string = 'tantaropicprodacr'
+
 @description('Container app target port')
 param targetPort int = 3000
 
@@ -35,6 +38,18 @@ module monitoring 'monitoring.bicep' = {
 }
 
 // ========================================
+// Module: Container Registry + Pull Identity
+// ========================================
+module containerRegistry 'container-registry.bicep' = {
+  name: '${projectName}-registry'
+  params: {
+    location: location
+    projectName: projectName
+    containerRegistryName: containerRegistryName
+  }
+}
+
+// ========================================
 // Module: Container App (Environment + App)
 // ========================================
 module containerApp 'container-app.bicep' = {
@@ -46,6 +61,8 @@ module containerApp 'container-app.bicep' = {
     targetPort: targetPort
     logAnalyticsCustomerId: monitoring.outputs.logAnalyticsCustomerId
     logAnalyticsSharedKey: monitoring.outputs.logAnalyticsSharedKey
+    containerRegistryServer: containerRegistry.outputs.loginServer
+    containerRegistryIdentityResourceId: containerRegistry.outputs.pullIdentityResourceId
     databaseUrl: databaseUrl
     githubToken: githubToken
     appInsightsConnectionString: appInsightsConnectionString
@@ -57,3 +74,5 @@ module containerApp 'container-app.bicep' = {
 // ========================================
 output containerAppUrl string = containerApp.outputs.fqdn
 output appInsightsName string = monitoring.outputs.appInsightsName
+output containerRegistryName string = containerRegistry.outputs.name
+output containerRegistryLoginServer string = containerRegistry.outputs.loginServer
